@@ -1,0 +1,26 @@
+{
+  "name": "minhthetus-cli",
+  "version": "1.0.0",
+  "description": "CLI libs",
+  "main": "src/index.js",
+  "bin": {
+    "minhthetus-cli": "./src/index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MinhTuLeHoang/minhthetus-cli.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MinhTuLeHoang/minhthetus-cli/issues"
+  },
+  "homepage": "https://github.com/MinhTuLeHoang/minhthetus-cli#readme",
+  "dependencies": {
+    "omelette": "^0.4.17"
+  }
+}
