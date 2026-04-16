@@ -17,6 +17,8 @@
 
 # production
 /build
+/dist
+/src/generated-scripts.js
 
 # misc
 .DS_Store

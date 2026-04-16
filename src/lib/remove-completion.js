@@ -6,12 +6,21 @@ function removeCompletion(binName) {
   try {
     const shellEnv = process.env.SHELL || '';
     const isZsh = shellEnv.includes('zsh');
-    const configFile = isZsh ? path.join(process.env.HOME, '.zshrc') : path.join(process.env.HOME, '.bash_profile');
+    const homeDir = process.env.HOME || process.env.USERPROFILE;
+    const configFile = isZsh ? path.join(homeDir, '.zshrc') : path.join(homeDir, '.bash_profile');
 
+    // 1. Remove the static completion script if it exists
+    const staticCompPath = path.join(homeDir, `.${binName}-completion.sh`);
+    if (fs.existsSync(staticCompPath)) {
+      console.log(`Deleting static completion script at ${staticCompPath}...`);
+      fs.unlinkSync(staticCompPath);
+    }
+
+    // 2. Remove the block from the shell config file
     if (fs.existsSync(configFile)) {
       let content = fs.readFileSync(configFile, 'utf8');
       
-      const regex = new RegExp(`# begin ${binName} completion[\\s\\S]*?# end ${binName} completion`, 'g');
+      const regex = new RegExp(`# begin ${binName} completion[\\s\\S]*?# end ${binName} completion\\n?`, 'g');
       
       if (regex.test(content)) {
         content = content.replace(regex, '').trim();

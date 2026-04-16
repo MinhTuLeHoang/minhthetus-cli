@@ -2,6 +2,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { spawn } = require('child_process');
 const omelette = require('omelette');
 
@@ -9,62 +10,80 @@ const { showHelp } = require('./lib/help');
 const { setupCompletion } = require('./lib/setup-completion');
 const { removeCompletion } = require('./lib/remove-completion');
 
+// Try to load embedded scripts. Fallback to empty if not generated yet.
+let embedded = { scripts: {}, generalScripts: {} };
+try {
+  embedded = require('./generated-scripts');
+} catch (e) {
+  // During initial build, this might be missing
+}
+
 const binName = 'minhthetus-cli';
-const scriptsDirRoot = path.join(__dirname, 'scripts');
+
+/**
+ * Recreates the script structure in a temporary directory to allow sourcing and execution.
+ */
+function extractScripts() {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), `${binName}-`));
+  
+  const scriptsDir = path.join(tempDir, 'scripts');
+  const genDir = path.join(tempDir, 'generalScripts');
+  
+  fs.mkdirSync(scriptsDir, { recursive: true });
+  fs.mkdirSync(genDir, { recursive: true });
+
+  for (const [relPath, content] of Object.entries(embedded.scripts)) {
+    const fullPath = path.join(scriptsDir, relPath);
+    fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+    fs.writeFileSync(fullPath, content, { mode: 0o755 });
+  }
+
+  for (const [relPath, content] of Object.entries(embedded.generalScripts)) {
+    const fullPath = path.join(genDir, relPath);
+    fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+    fs.writeFileSync(fullPath, content, { mode: 0o755 });
+  }
+
+  return tempDir;
+}
 
 // --- Completion Logic ---
 const completion = omelette(binName);
 
 completion.on('complete', (fragment, { reply, line }) => {
-  // Use regex to split and filter out empty strings from trailing spaces
   const parts = line.split(/\s+/).filter(Boolean);
-  // args are words after binName, excluding the word currently being typed
-  // If line ends with space, then we are completing a NEW word.
-  // If line does NOT end with space, then we are completing the LAST word.
   const isNewWord = line.endsWith(' ');
   const args = parts.slice(1, isNewWord ? parts.length : parts.length - 1);
   
-  let currentDir = scriptsDirRoot;
+  const scriptKeys = Object.keys(embedded.scripts);
   let matches = [];
 
-  // If this is the first argument, include built-in commands
   if (args.length === 0) {
     matches.push('help', 'setup-completion', 'remove-completion');
   }
 
-  // Navigate through subfolders based on existing arguments
-  for (const arg of args) {
-    if (['help', 'setup-completion', 'remove-completion', 'hello'].includes(arg)) {
-       return reply([]); 
-    }
-    const nextDir = path.join(currentDir, arg);
-    if (fs.existsSync(nextDir) && fs.statSync(nextDir).isDirectory()) {
-      currentDir = nextDir;
-    } else {
-      // Hit a file or invalid path
-      return reply([]);
-    }
-  }
+  // Find matches based on current args prefix
+  const prefix = args.join('/');
+  const subItems = new Set();
 
-  // Find available items in currentDir
-  if (fs.existsSync(currentDir) && fs.statSync(currentDir).isDirectory()) {
-    const items = fs.readdirSync(currentDir);
-    for (const item of items) {
-      const fullPath = path.join(currentDir, item);
-      const stat = fs.statSync(fullPath);
-      if (stat.isDirectory()) {
-        matches.push(item);
-      } else if (item.endsWith('.sh')) {
-        matches.push(item.slice(0, -3));
+  for (const key of scriptKeys) {
+    if (prefix === '' || key.startsWith(prefix + (prefix ? '/' : ''))) {
+      const remaining = prefix === '' ? key : key.slice(prefix.length + 1);
+      const firstPart = remaining.split('/')[0];
+      if (firstPart) {
+        if (firstPart.endsWith('.sh')) {
+           subItems.add(firstPart.slice(0, -3));
+        } else {
+           subItems.add(firstPart);
+        }
       }
     }
   }
 
-  reply(matches);
+  reply([...matches, ...Array.from(subItems)]);
 });
 
 completion.next(() => {
-  // --- Execution Logic ---
   const fullArgs = process.argv.slice(2);
 
   if (fullArgs.length === 0 || ['help', '--help', '-h'].includes(fullArgs[0])) {
@@ -73,7 +92,7 @@ completion.next(() => {
   }
 
   if (fullArgs[0] === 'setup-completion') {
-    setupCompletion(binName, completion);
+    setupCompletion(binName);
     process.exit(0);
   }
 
@@ -82,42 +101,52 @@ completion.next(() => {
     process.exit(0);
   }
 
-  // Find the script path by consuming arguments
-  let scriptPath = null;
-  let currentSearchDir = scriptsDirRoot;
+  // Find the script in embedded scripts
+  let matchedRelPath = null;
   let consumedCount = 0;
 
-  for (let i = 0; i < fullArgs.length; i++) {
-    const arg = fullArgs[i];
-    const potentialFile = path.join(currentSearchDir, `${arg}.sh`);
-    const potentialDir = path.join(currentSearchDir, arg);
-
-    if (fs.existsSync(potentialFile) && fs.statSync(potentialFile).isFile()) {
-      scriptPath = potentialFile;
-      consumedCount = i + 1;
-      break;
-    } else if (fs.existsSync(potentialDir) && fs.statSync(potentialDir).isDirectory()) {
-      currentSearchDir = potentialDir;
-    } else {
+  // Try to find the longest matching path
+  for (let i = fullArgs.length; i > 0; i--) {
+    const potentialPath = fullArgs.slice(0, i).join('/') + '.sh';
+    if (embedded.scripts[potentialPath]) {
+      matchedRelPath = potentialPath;
+      consumedCount = i;
       break;
     }
   }
 
-  if (!scriptPath) {
+  if (!matchedRelPath) {
     console.error(`\nError: command "${fullArgs.join(' ')}" not found.`);
     showHelp(binName);
     process.exit(1);
   }
 
   const scriptArgs = fullArgs.slice(consumedCount);
+  
+  // Extract scripts to temp dir for execution
+  const tempDir = extractScripts();
+  const scriptPath = path.join(tempDir, 'scripts', matchedRelPath);
 
-  spawn('sh', [scriptPath, ...scriptArgs], { stdio: 'inherit' })
-    .on('exit', code => process.exit(code || 0))
-    .on('error', err => {
-      console.error('Execution error:', err.message);
-      process.exit(1);
-    });
+  const proc = spawn('sh', [scriptPath, ...scriptArgs], { 
+    stdio: 'inherit',
+    env: { ...process.env, MINHTHETUS_TMP: tempDir } 
+  });
+
+  proc.on('exit', code => {
+    // Cleanup temp dir
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch (e) {}
+    process.exit(code || 0);
+  });
+
+  proc.on('error', err => {
+    console.error('Execution error:', err.message);
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch (e) {}
+    process.exit(1);
+  });
 });
 
 completion.init();
-
