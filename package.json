@@ -11,9 +11,9 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "rm -rf dist && node scripts/bundle-scripts.js && esbuild src/index.js --bundle --platform=node --outfile=dist/index.js --external:omelette",
-    "publish": "pnpm publish --access public",
-    "release": "pnpm version patch && pnpm publish --access public"
+    "build": "node scripts/precheck.js && rm -rf dist && node scripts/bundle-scripts.js && esbuild src/index.js --bundle --platform=node --outfile=dist/index.js --external:omelette",
+    "publish": "node scripts/precheck.js --strict && pnpm publish --access public",
+    "release": "pnpm version patch && npm run publish"
   },
   "repository": {
     "type": "git",

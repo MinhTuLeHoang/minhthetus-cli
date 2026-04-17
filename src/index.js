@@ -88,16 +88,21 @@ completion.next(async () => {
 
   if (fullArgs.length === 0 || ['help', '--help', '-h'].includes(fullArgs[0])) {
     await showHelp(binName);
+    console.log(); // Spacing end 1 line
     process.exit(0);
   }
 
   if (fullArgs[0] === 'setup-completion') {
+    console.log(); // Spacing top 1 line
     setupCompletion(binName);
+    console.log(); // Spacing end 1 line
     process.exit(0);
   }
 
   if (fullArgs[0] === 'remove-completion') {
+    console.log(); // Spacing top 1 line
     removeCompletion(binName);
+    console.log(); // Spacing end 1 line
     process.exit(0);
   }
 
@@ -116,8 +121,11 @@ completion.next(async () => {
   }
 
   if (!matchedRelPath) {
-    console.error(`\nError: command "${fullArgs.join(' ')}" not found.`);
-    await showHelp(binName);
+    console.log(); // Spacing top 1 line
+    console.error(`\x1b[31m\x1b[1mError:\x1b[0m command "${fullArgs.join(' ')}" not found.`);
+    console.log(); // Spacing between error and help
+    await showHelp(binName, { skipSplash: true });
+    console.log(); // Spacing end 1 line
     process.exit(1);
   }
 
@@ -127,6 +135,7 @@ completion.next(async () => {
   const tempDir = extractScripts();
   const scriptPath = path.join(tempDir, 'scripts', matchedRelPath);
 
+  console.log(); // Spacing top 1 line
   const proc = spawn('sh', [scriptPath, ...scriptArgs], { 
     stdio: 'inherit',
     env: { ...process.env, MINHTHETUS_TMP: tempDir } 
@@ -137,11 +146,12 @@ completion.next(async () => {
     try {
       fs.rmSync(tempDir, { recursive: true, force: true });
     } catch (e) {}
+    console.log(); // Spacing end 1 line
     process.exit(code || 0);
   });
 
   proc.on('error', err => {
-    console.error('Execution error:', err.message);
+    console.error(`\x1b[31m\x1b[1mExecution error:\x1b[0m ${err.message}`);
     try {
       fs.rmSync(tempDir, { recursive: true, force: true });
     } catch (e) {}

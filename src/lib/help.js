@@ -3,15 +3,18 @@ const path = require('path');
 
 const { showSplash, trackLines, resetLines } = require('./splash');
 
-async function showHelp(binName) {
+async function showHelp(binName, { skipSplash = false } = {}) {
   resetLines();
-  const splashPromise = showSplash(false);
+  let splashPromise = null;
+  if (!skipSplash) {
+    splashPromise = showSplash(false);
+  }
   
   function log(msg = '') {
     console.log(msg);
     // Count lines in message + 1 for console.log's implicit newline
     const count = (msg.match(/\n/g) || []).length + 1;
-    trackLines(count);
+    if (!skipSplash) trackLines(count);
   }
   
   // Try to find the scripts directory. 
@@ -31,7 +34,7 @@ async function showHelp(binName) {
     gray: "\x1b[90m"
   };
 
-  log(`\n${colors.bright}Usage:${colors.reset} ${binName} ${colors.cyan}<command>${colors.reset} [args]`);
+  log(`${colors.bright}Usage:${colors.reset} ${binName} ${colors.cyan}<command>${colors.reset} [args]`);
   log(`\n${colors.bright}Available commands:${colors.reset}`);
 
   function getScriptsTree(dir) {
@@ -86,9 +89,9 @@ async function showHelp(binName) {
   log(`${colors.bright}Built-in commands:${colors.reset}`);
   log(`  ${colors.cyan}help${colors.reset}               Show this help message`);
   log(`  ${colors.cyan}setup-completion${colors.reset}   Install tab completion for your shell`);
-  log(`  ${colors.cyan}remove-completion${colors.reset}  Uninstall tab completion for your shell\n`);
+  log(`  ${colors.cyan}remove-completion${colors.reset}  Uninstall tab completion for your shell`);
 
-  await splashPromise;
+  if (splashPromise) await splashPromise;
 }
 
 module.exports = { showHelp };
