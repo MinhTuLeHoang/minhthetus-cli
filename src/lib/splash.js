@@ -21,30 +21,38 @@ function getGradientColor(index) {
   return `\x1b[38;5;${gradientColors[colorIndex]}m`;
 }
 
-async function showSplash() {
+let linesBelow = 0;
+
+function trackLines(count = 1) {
+  linesBelow += count;
+}
+
+function resetLines() {
+  linesBelow = 0;
+}
+
+async function showSplash(wait = true) {
   const icon = "✦";
   const suffix = "✦";
   const text = "MINH THE TUS CLI";
   
-  // Use standard ASCII but spaced out for premium look
   const styledText = text.toUpperCase().split('').join(' ');
   
   let frame = 0;
   process.stdout.write("\x1b[?25l"); // Hide cursor
 
-  const drawLogo = (isFirst = false, final = false) => {
-    // \r moves the cursor back to the start of the current line
-    // \x1b[K clears the rest of the line (in case the new text is shorter)
+  const drawLogo = (final = false) => {
+    // If we have lines below, jump up to the logo line
+    if (linesBelow > 0) {
+      process.stdout.write(`\x1b[${linesBelow}A`);
+    }
+
     process.stdout.write("\r\x1b[K  ");
 
     const wrapFrame = final ? 0 : frame;
-    
-    // Icon (Cyan at end, or pulsing)
     const iconColor = `\x1b[38;5;${gradientColors[wrapFrame % gradientColors.length]}m`;
     let output = `${iconColor}${colors.bright}${icon}${colors.reset}   `;
     
-    // Gradient text
-    // We use a multiplier (1.8) to "squish" the gradient so the full spectrum fits
     const multiplier = 1.3;
     for (let i = 0; i < styledText.length; i++) {
        const color = getGradientColor(i * multiplier + wrapFrame);
@@ -54,25 +62,39 @@ async function showSplash() {
     const suffixColor = `\x1b[38;5;${gradientColors[(wrapFrame + 20) % gradientColors.length]}m`;
     output += `   ${suffixColor}${colors.bright}${suffix}${colors.reset}`;
     process.stdout.write(output);
+
+    // If we jumped up, jump back down to restore cursor position
+    if (linesBelow > 0) {
+      process.stdout.write(`\x1b[${linesBelow}B\r`);
+    }
   };
 
-  // Animate for a specific number of frames to land on the desired colors
-  // Frame 48 approx matches the requested screenshot colors with 1.8x scale
   const targetFrames = 96;
   
-  return new Promise((resolve) => {
+  const animation = new Promise((resolve) => {
     const interval = setInterval(() => {
        if (frame < targetFrames) {
           drawLogo();
           frame++;
        } else {
           clearInterval(interval);
-          drawLogo(false, true); // Final draw with fixed icon colors
-          process.stdout.write("\n\n\x1b[?25h"); // Final newlines and show cursor
+          drawLogo(true);
+          process.stdout.write("\x1b[?25h");
           resolve();
        }
-    }, 40);
+    }, 160);
   });
+
+  if (wait) {
+    process.stdout.write("\n\n");
+    await animation;
+    process.stdout.write("\n\n");
+  } else {
+    // Just print the initial line and return
+    process.stdout.write("\n\n");
+    linesBelow = 2; // Account for the \n\n we just added
+    return animation;
+  }
 }
 
-module.exports = { showSplash };
+module.exports = { showSplash, trackLines, resetLines };

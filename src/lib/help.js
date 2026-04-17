@@ -1,10 +1,18 @@
 const fs = require('fs');
 const path = require('path');
 
-const { showSplash } = require('./splash');
+const { showSplash, trackLines, resetLines } = require('./splash');
 
 async function showHelp(binName) {
-  await showSplash();
+  resetLines();
+  const splashPromise = showSplash(false);
+  
+  function log(msg = '') {
+    console.log(msg);
+    // Count lines in message + 1 for console.log's implicit newline
+    const count = (msg.match(/\n/g) || []).length + 1;
+    trackLines(count);
+  }
   
   // Try to find the scripts directory. 
   // When running from src/, it's ../scripts
@@ -23,8 +31,8 @@ async function showHelp(binName) {
     gray: "\x1b[90m"
   };
 
-  console.log(`\n${colors.bright}Usage:${colors.reset} ${binName} ${colors.cyan}<command>${colors.reset} [args]`);
-  console.log(`\n${colors.bright}Available commands:${colors.reset}`);
+  log(`\n${colors.bright}Usage:${colors.reset} ${binName} ${colors.cyan}<command>${colors.reset} [args]`);
+  log(`\n${colors.bright}Available commands:${colors.reset}`);
 
   function getScriptsTree(dir) {
     if (!fs.existsSync(dir)) return {};
@@ -61,25 +69,26 @@ async function showHelp(binName) {
       const connector = isLastItem ? '└── ' : '├── ';
       
       if (item.type === 'dir') {
-        console.log(`${indent}${connector}${colors.blue}${colors.bright}${key}/${colors.reset}`);
+        log(`${indent}${connector}${colors.blue}${colors.bright}${key}/${colors.reset}`);
         printTree(item.children, indent + (isLastItem ? '    ' : '│   '), true);
       } else {
         const description = item.description ? ` ${colors.gray}# ${item.description}${colors.reset}` : '';
-        console.log(`${indent}${connector}${colors.green}${key}${colors.reset}${description}`);
+        log(`${indent}${connector}${colors.green}${key}${colors.reset}${description}`);
       }
     });
   }
 
   const scriptsTree = getScriptsTree(scriptsDir);
   printTree(scriptsTree);
-  console.log();
+  log();
 
   // Built-in commands
-  console.log(`${colors.bright}Built-in commands:${colors.reset}`);
-  console.log(`  ${colors.cyan}help${colors.reset}               Show this help message`);
-  console.log(`  ${colors.cyan}setup-completion${colors.reset}   Install tab completion for your shell`);
-  console.log(`  ${colors.cyan}remove-completion${colors.reset}  Uninstall tab completion for your shell\n`);
+  log(`${colors.bright}Built-in commands:${colors.reset}`);
+  log(`  ${colors.cyan}help${colors.reset}               Show this help message`);
+  log(`  ${colors.cyan}setup-completion${colors.reset}   Install tab completion for your shell`);
+  log(`  ${colors.cyan}remove-completion${colors.reset}  Uninstall tab completion for your shell\n`);
+
+  await splashPromise;
 }
 
 module.exports = { showHelp };
-
