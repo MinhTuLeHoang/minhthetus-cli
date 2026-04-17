@@ -83,11 +83,11 @@ completion.on('complete', (fragment, { reply, line }) => {
   reply([...matches, ...Array.from(subItems)]);
 });
 
-completion.next(() => {
+completion.next(async () => {
   const fullArgs = process.argv.slice(2);
 
   if (fullArgs.length === 0 || ['help', '--help', '-h'].includes(fullArgs[0])) {
-    showHelp(binName);
+    await showHelp(binName);
     process.exit(0);
   }
 
@@ -117,7 +117,7 @@ completion.next(() => {
 
   if (!matchedRelPath) {
     console.error(`\nError: command "${fullArgs.join(' ')}" not found.`);
-    showHelp(binName);
+    await showHelp(binName);
     process.exit(1);
   }
 

@@ -1,8 +1,18 @@
 const fs = require('fs');
 const path = require('path');
 
-function showHelp(binName) {
-  const scriptsDir = path.join(__dirname, '..', 'scripts');
+const { showSplash } = require('./splash');
+
+async function showHelp(binName) {
+  await showSplash();
+  
+  // Try to find the scripts directory. 
+  // When running from src/, it's ../scripts
+  // When running from dist/, it's ../src/scripts
+  let scriptsDir = path.join(__dirname, '..', 'scripts');
+  if (!fs.existsSync(path.join(scriptsDir, 'hello.sh')) && fs.existsSync(path.join(__dirname, '..', 'src', 'scripts'))) {
+    scriptsDir = path.join(__dirname, '..', 'src', 'scripts');
+  }
   
   const colors = {
     reset: "\x1b[0m",
