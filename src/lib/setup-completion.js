@@ -11,11 +11,17 @@ function setupCompletion(binName) {
     const configFile = isZsh ? path.join(homeDir, '.zshrc') : path.join(homeDir, '.bash_profile');
     
     // 1. Generate and save the static completion script
-    const staticCompPath = path.join(homeDir, `.${binName}-completion.sh`);
+    const staticCompDir = path.join(homeDir, `.${binName}`);
+    const staticCompPath = path.join(staticCompDir, 'completion.sh');
+    
+    if (!fs.existsSync(staticCompDir)) {
+      fs.mkdirSync(staticCompDir, { recursive: true });
+    }
+
     console.log(`Generating static completion script at ${staticCompPath}...`);
     
-    // Use the currently running script to get the completion string
-    const scriptPath = process.argv[1];
+    // Safely invoke the local CLI using the Node executable to get the completion string
+    const scriptPath = path.join(__dirname, '..', 'index.js');
     const completionOutput = execSync(`"${process.execPath}" "${scriptPath}" --completion`, { encoding: 'utf8' });
     fs.writeFileSync(staticCompPath, completionOutput);
 
@@ -34,7 +40,7 @@ function setupCompletion(binName) {
       
       fs.writeFileSync(configFile, content.trim() + '\n' + block);
       console.log(`\n✅ Success! Completion added to ${configFile}.`);
-      console.log(`Please run: source ${configFile} or Open a new terminal`);
+      console.log(`Please run: "source ${configFile}" or Open a new terminal`);
     } else {
       console.error(`Shell config file not found at ${configFile}`);
     }

@@ -3,7 +3,7 @@ const path = require('path');
 
 const { showSplash, trackLines, resetLines } = require('./splash');
 
-async function showHelp(binName, { skipSplash = false } = {}) {
+async function showHelp(binName, { skipSplash = false, embeddedScripts = null } = {}) {
   resetLines();
   let splashPromise = null;
   if (!skipSplash) {
@@ -12,17 +12,8 @@ async function showHelp(binName, { skipSplash = false } = {}) {
   
   function log(msg = '') {
     console.log(msg);
-    // Count lines in message + 1 for console.log's implicit newline
     const count = (msg.match(/\n/g) || []).length + 1;
     if (!skipSplash) trackLines(count);
-  }
-  
-  // Try to find the scripts directory. 
-  // When running from src/, it's ../scripts
-  // When running from dist/, it's ../src/scripts
-  let scriptsDir = path.join(__dirname, '..', 'scripts');
-  if (!fs.existsSync(path.join(scriptsDir, 'hello.sh')) && fs.existsSync(path.join(__dirname, '..', 'src', 'scripts'))) {
-    scriptsDir = path.join(__dirname, '..', 'src', 'scripts');
   }
   
   const colors = {
@@ -37,30 +28,66 @@ async function showHelp(binName, { skipSplash = false } = {}) {
   log(`${colors.bright}Usage:${colors.reset} ${binName} ${colors.cyan}<command>${colors.reset} [args]`);
   log(`\n${colors.bright}Available commands:${colors.reset}`);
 
-  function getScriptsTree(dir) {
-    if (!fs.existsSync(dir)) return {};
-    const tree = {};
-    const items = fs.readdirSync(dir);
+  let scriptsTree = {};
 
-    for (const item of items) {
-      const fullPath = path.join(dir, item);
-      const stat = fs.statSync(fullPath);
-      if (stat.isDirectory()) {
-        const subTree = getScriptsTree(fullPath);
-        if (Object.keys(subTree).length > 0) {
-          tree[item] = { type: 'dir', children: subTree };
+  if (embeddedScripts) {
+    // Build tree from embedded scripts
+    for (const [relPath, content] of Object.entries(embeddedScripts)) {
+      const parts = relPath.split('/');
+      let current = scriptsTree;
+      
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        const isLast = i === parts.length - 1;
+        
+        if (isLast) {
+          const name = part.endsWith('.sh') ? part.slice(0, -3) : part;
+          const match = content.match(/#\s*Description:\s*(.+)/i);
+          current[name] = {
+            type: 'file',
+            description: match ? match[1].trim() : 'No description provided'
+          };
+        } else {
+          if (!current[part]) {
+            current[part] = { type: 'dir', children: {} };
+          }
+          current = current[part].children;
         }
-      } else if (item.endsWith('.sh')) {
-        const name = item.slice(0, -3);
-        const scriptContent = fs.readFileSync(fullPath, 'utf8');
-        const match = scriptContent.match(/#\s*Description:\s*(.+)/i);
-        tree[name] = { 
-          type: 'file', 
-          description: match ? match[1].trim() : 'No description provided' 
-        };
       }
     }
-    return tree;
+  } else {
+    // Fallback to filesystem
+    let scriptsDir = path.join(__dirname, '..', 'scripts');
+    if (!fs.existsSync(path.join(scriptsDir, 'hello.sh')) && fs.existsSync(path.join(__dirname, '..', 'src', 'scripts'))) {
+      scriptsDir = path.join(__dirname, '..', 'src', 'scripts');
+    }
+
+    function getScriptsTree(dir) {
+      if (!fs.existsSync(dir)) return {};
+      const tree = {};
+      const items = fs.readdirSync(dir);
+
+      for (const item of items) {
+        const fullPath = path.join(dir, item);
+        const stat = fs.statSync(fullPath);
+        if (stat.isDirectory()) {
+          const subTree = getScriptsTree(fullPath);
+          if (Object.keys(subTree).length > 0) {
+            tree[item] = { type: 'dir', children: subTree };
+          }
+        } else if (item.endsWith('.sh')) {
+          const name = item.slice(0, -3);
+          const scriptContent = fs.readFileSync(fullPath, 'utf8');
+          const match = scriptContent.match(/#\s*Description:\s*(.+)/i);
+          tree[name] = { 
+            type: 'file', 
+            description: match ? match[1].trim() : 'No description provided' 
+          };
+        }
+      }
+      return tree;
+    }
+    scriptsTree = getScriptsTree(scriptsDir);
   }
 
   function printTree(tree, indent = '', isLast = true) {
@@ -81,7 +108,6 @@ async function showHelp(binName, { skipSplash = false } = {}) {
     });
   }
 
-  const scriptsTree = getScriptsTree(scriptsDir);
   printTree(scriptsTree);
   log();
 

@@ -10,10 +10,17 @@ function removeCompletion(binName) {
     const configFile = isZsh ? path.join(homeDir, '.zshrc') : path.join(homeDir, '.bash_profile');
 
     // 1. Remove the static completion script if it exists
-    const staticCompPath = path.join(homeDir, `.${binName}-completion.sh`);
+    const staticCompDir = path.join(homeDir, `.${binName}`);
+    const staticCompPath = path.join(staticCompDir, 'completion.sh');
+    
     if (fs.existsSync(staticCompPath)) {
       console.log(`Deleting static completion script at ${staticCompPath}...`);
       fs.unlinkSync(staticCompPath);
+    }
+    
+    // Optionally remove the directory if it's empty
+    if (fs.existsSync(staticCompDir) && fs.readdirSync(staticCompDir).length === 0) {
+      fs.rmdirSync(staticCompDir);
     }
 
     // 2. Remove the block from the shell config file

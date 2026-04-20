@@ -6,11 +6,18 @@ function minifyShContent(content) {
   return lines
     .map(line => {
       let processed = line;
-      if (!processed.trim().startsWith('#!')) {
-        processed = processed.replace(/\s#.*$/, '');
+      // Preserve shebang and Description
+      if (processed.trim().startsWith('#!')) {
+        return processed.trim();
       }
-      processed = processed.trim();
-      if (processed.startsWith('#') && !processed.startsWith('#!')) {
+      if (processed.trim().toLowerCase().startsWith('# description:')) {
+        return processed.trim();
+      }
+      
+      // Remove other comments
+      processed = processed.replace(/\s#.*$/, '').trim();
+      
+      if (processed.startsWith('#')) {
         return null;
       }
       return processed;

@@ -87,7 +87,7 @@ completion.next(async () => {
   const fullArgs = process.argv.slice(2);
 
   if (fullArgs.length === 0 || ['help', '--help', '-h'].includes(fullArgs[0])) {
-    await showHelp(binName);
+    await showHelp(binName, { embeddedScripts: embedded.scripts });
     console.log(); // Spacing end 1 line
     process.exit(0);
   }
@@ -124,7 +124,7 @@ completion.next(async () => {
     console.log(); // Spacing top 1 line
     console.error(`\x1b[31m\x1b[1mError:\x1b[0m command "${fullArgs.join(' ')}" not found.`);
     console.log(); // Spacing between error and help
-    await showHelp(binName, { skipSplash: true });
+    await showHelp(binName, { skipSplash: true, embeddedScripts: embedded.scripts });
     console.log(); // Spacing end 1 line
     process.exit(1);
   }
