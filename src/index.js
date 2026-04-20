@@ -8,7 +8,6 @@ const omelette = require('omelette');
 
 const { showHelp } = require('./lib/help');
 const { setupCompletion } = require('./lib/setup-completion');
-const { removeCompletion } = require('./lib/remove-completion');
 const { installGum, GUM_PATH } = require('./lib/utils/install-gum');
 const { setupShellWrapper } = require('./lib/utils/setup-shell-wrapper');
 
@@ -75,7 +74,7 @@ completion.on('complete', (fragment, { reply, line }) => {
   let matches = [];
 
   if (args.length === 0) {
-    matches.push('help', 'setup-completion', 'remove-completion', 'uninstall');
+    matches.push('help', 'setup-completion', 'uninstall');
   }
 
   // Find matches based on current args prefix
@@ -117,17 +116,35 @@ completion.next(async () => {
     process.exit(0);
   }
 
-  if (fullArgs[0] === 'remove-completion') {
-    process.stderr.write('\n'); // Spacing top 1 line
-    removeCompletion(binName);
-    process.stderr.write('\n'); // Spacing end 1 line
-    process.exit(0);
-  }
+
 
   if (fullArgs[0] === 'uninstall') {
     process.stderr.write('\n'); // Spacing top 1 line
-    const { uninstall } = require('./lib/uninstall');
+    const { uninstall } = require('./lib/utils/uninstall');
+    
+    // First, perform the internal cleanup (completions, shell wrappers, etc.)
     await uninstall(binName);
+    
+    process.stderr.write(`\n✦ Attempting to remove the package globally...\n`);
+    const { execSync } = require('child_process');
+    
+    // Try pnpm first, then npm. Standard error is ignored to keep it clean if one fails.
+    try {
+      try {
+        process.stderr.write(`Running: pnpm uninstall -g ${binName}\n`);
+        execSync(`pnpm uninstall -g ${binName}`, { stdio: 'inherit' });
+      } catch (e) {
+        process.stderr.write(`Running: npm uninstall -g ${binName}\n`);
+        execSync(`npm uninstall -g ${binName}`, { stdio: 'inherit' });
+      }
+      process.stderr.write(`\n✅ Package removed successfully.\n`);
+    } catch (err) {
+      process.stderr.write(`\n⚠️ Could not automatically remove the package.\n`);
+      process.stderr.write(`Please run one of the following manually to finish:\n`);
+      process.stderr.write(`   pnpm uninstall -g ${binName}\n`);
+      process.stderr.write(`   npm uninstall -g ${binName}\n`);
+    }
+    
     process.stderr.write('\n'); // Spacing end 1 line
     process.exit(0);
   }

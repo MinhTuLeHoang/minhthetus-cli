@@ -142,7 +142,6 @@ async function showHelp(binName, { skipSplash = false, embeddedScripts = null } 
   log(`${colors.bright}Built-in commands:${colors.reset}`);
   log(`  ${colors.cyan}help${colors.reset}               Show this help message`);
   log(`  ${colors.cyan}setup-completion${colors.reset}   Install tab completion for your shell`);
-  log(`  ${colors.cyan}remove-completion${colors.reset}  Uninstall tab completion for your shell`);
   log(`  ${colors.cyan}uninstall${colors.reset}          Completely remove the CLI and all integrations`);
 
   if (splashPromise) await splashPromise;

@@ -15,7 +15,8 @@
     "build": "node scripts/precheck.js && rm -rf dist && node scripts/bundle-scripts.js && esbuild src/index.js --bundle --platform=node --outfile=dist/index.js --external:omelette",
     "publish": "node scripts/precheck.js --strict && pnpm publish --access public",
     "release": "pnpm version patch && npm run publish",
-    "postinstall": "node src/lib/utils/install-dependencies.js"
+    "postinstall": "node src/lib/utils/install-dependencies.js",
+    "preuninstall": "node src/lib/utils/uninstall.js"
   },
   "repository": {
     "type": "git",
