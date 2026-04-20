@@ -1,7 +1,19 @@
 const fs = require('fs');
 const path = require('path');
 
-const { showSplash, trackLines, resetLines } = require('./splash');
+const { showSplash, trackLines, resetLines } = require('./utils/splash');
+const { GUM_PATH } = require('./utils/install-gum');
+const { execSync } = require('child_process');
+
+function gumStyle(text, options = {}) {
+  if (!fs.existsSync(GUM_PATH)) return null;
+  const args = Object.entries(options).map(([k, v]) => `--${k} "${v}"`).join(' ');
+  try {
+    return execSync(`${GUM_PATH} style ${args} "${text}"`).toString();
+  } catch (e) {
+    return null;
+  }
+}
 
 async function showHelp(binName, { skipSplash = false, embeddedScripts = null } = {}) {
   resetLines();
@@ -11,7 +23,7 @@ async function showHelp(binName, { skipSplash = false, embeddedScripts = null } 
   }
   
   function log(msg = '') {
-    console.log(msg);
+    process.stderr.write(msg + '\n');
     const count = (msg.match(/\n/g) || []).length + 1;
     if (!skipSplash) trackLines(count);
   }
@@ -25,8 +37,20 @@ async function showHelp(binName, { skipSplash = false, embeddedScripts = null } 
     gray: "\x1b[90m"
   };
 
-  log(`${colors.bright}Usage:${colors.reset} ${binName} ${colors.cyan}<command>${colors.reset} [args]`);
-  log(`\n${colors.bright}Available commands:${colors.reset}`);
+  const usageHeader = gumStyle("USAGE", { foreground: "212", border: "normal", padding: "0 1", "border-foreground": "212" });
+  if (usageHeader) {
+    log(usageHeader.trim());
+    log(`${colors.bright}${binName}${colors.reset} ${colors.cyan}<command>${colors.reset} [args]`);
+  } else {
+    log(`${colors.bright}Usage:${colors.reset} ${binName} ${colors.cyan}<command>${colors.reset} [args]`);
+  }
+  
+  const commandsHeader = gumStyle("AVAILABLE COMMANDS", { foreground: "99", "margin-top": "1" });
+  if (commandsHeader) {
+    log(commandsHeader.trim());
+  } else {
+    log(`\n${colors.bright}Available commands:${colors.reset}`);
+  }
 
   let scriptsTree = {};
 

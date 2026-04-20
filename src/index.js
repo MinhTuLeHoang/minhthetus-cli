@@ -9,6 +9,7 @@ const omelette = require('omelette');
 const { showHelp } = require('./lib/help');
 const { setupCompletion } = require('./lib/setup-completion');
 const { removeCompletion } = require('./lib/remove-completion');
+const { installGum, GUM_PATH } = require('./lib/utils/install-gum');
 
 // Try to load embedded scripts. Fallback to empty if not generated yet.
 let embedded = { scripts: {}, generalScripts: {} };
@@ -45,6 +46,20 @@ function extractScripts() {
   }
 
   return tempDir;
+}
+
+/**
+ * Ensures gum is installed and available.
+ */
+async function ensureGum() {
+  if (!fs.existsSync(GUM_PATH)) {
+    process.stderr.write("✦ Improving your experience (installing assets)...\n");
+    try {
+      await installGum();
+    } catch (e) {
+      console.error("Warning: Failed to install gum. Some UI features may be degraded.");
+    }
+  }
 }
 
 // --- Completion Logic ---
@@ -84,25 +99,26 @@ completion.on('complete', (fragment, { reply, line }) => {
 });
 
 completion.next(async () => {
+  await ensureGum();
   const fullArgs = process.argv.slice(2);
 
   if (fullArgs.length === 0 || ['help', '--help', '-h'].includes(fullArgs[0])) {
     await showHelp(binName, { embeddedScripts: embedded.scripts });
-    console.log(); // Spacing end 1 line
+    process.stderr.write('\n'); // Spacing end 1 line
     process.exit(0);
   }
 
   if (fullArgs[0] === 'setup-completion') {
-    console.log(); // Spacing top 1 line
+    process.stderr.write('\n'); // Spacing top 1 line
     setupCompletion(binName);
-    console.log(); // Spacing end 1 line
+    process.stderr.write('\n'); // Spacing end 1 line
     process.exit(0);
   }
 
   if (fullArgs[0] === 'remove-completion') {
-    console.log(); // Spacing top 1 line
+    process.stderr.write('\n'); // Spacing top 1 line
     removeCompletion(binName);
-    console.log(); // Spacing end 1 line
+    process.stderr.write('\n'); // Spacing end 1 line
     process.exit(0);
   }
 
@@ -121,11 +137,11 @@ completion.next(async () => {
   }
 
   if (!matchedRelPath) {
-    console.log(); // Spacing top 1 line
+    process.stderr.write('\n'); // Spacing top 1 line
     console.error(`\x1b[31m\x1b[1mError:\x1b[0m command "${fullArgs.join(' ')}" not found.`);
-    console.log(); // Spacing between error and help
+    process.stderr.write('\n'); // Spacing between error and help
     await showHelp(binName, { skipSplash: true, embeddedScripts: embedded.scripts });
-    console.log(); // Spacing end 1 line
+    process.stderr.write('\n'); // Spacing end 1 line
     process.exit(1);
   }
 
@@ -135,10 +151,13 @@ completion.next(async () => {
   const tempDir = extractScripts();
   const scriptPath = path.join(tempDir, 'scripts', matchedRelPath);
 
-  console.log(); // Spacing top 1 line
+  const binDir = path.dirname(GUM_PATH);
+  const newPath = `${binDir}${path.delimiter}${process.env.PATH}`;
+
+  process.stderr.write('\n'); // Spacing top 1 line
   const proc = spawn('sh', [scriptPath, ...scriptArgs], { 
     stdio: 'inherit',
-    env: { ...process.env, MINHTHETUS_TMP: tempDir } 
+    env: { ...process.env, PATH: newPath, MINHTHETUS_TMP: tempDir } 
   });
 
   proc.on('exit', code => {
@@ -146,7 +165,7 @@ completion.next(async () => {
     try {
       fs.rmSync(tempDir, { recursive: true, force: true });
     } catch (e) {}
-    console.log(); // Spacing end 1 line
+    process.stderr.write('\n'); // Spacing end 1 line
     process.exit(code || 0);
   });
 

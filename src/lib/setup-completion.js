@@ -21,7 +21,7 @@ function setupCompletion(binName) {
     console.log(`Generating static completion script at ${staticCompPath}...`);
     
     // Safely invoke the local CLI using the Node executable to get the completion string
-    const scriptPath = path.join(__dirname, '..', 'index.js');
+    const scriptPath = require.main ? require.main.filename : process.argv[1];
     const completionOutput = execSync(`"${process.execPath}" "${scriptPath}" --completion`, { encoding: 'utf8' });
     fs.writeFileSync(staticCompPath, completionOutput);
 
@@ -35,8 +35,20 @@ function setupCompletion(binName) {
       // Remove old dynamic/slow completion block if it exists
       content = content.replace(new RegExp(`# begin ${binName} completion[\\s\\S]*?# end ${binName} completion\\n?`, 'g'), '');
       
-      // Append the new, fast static sourcing block
-      const block = `\n# begin ${binName} completion\n[ -f "${staticCompPath}" ] && source "${staticCompPath}"\n# end ${binName} completion\n`;
+      // Append the new, fast static sourcing block with the shell function wrapper
+      const block = `
+# begin ${binName} completion
+[ -f "${staticCompPath}" ] && source "${staticCompPath}"
+
+# Shell wrapper to enable environment modifications (e.g. nvm use)
+${binName}() {
+  tmpfile=$(mktemp)
+  MINHTHETUS_SHELL_PIPE=$tmpfile command ${binName} "$@"
+  [ -s "$tmpfile" ] && source "$tmpfile"
+  rm -f "$tmpfile"
+}
+# end ${binName} completion
+`;
       
       fs.writeFileSync(configFile, content.trim() + '\n' + block);
       console.log(`\n✅ Success! Completion added to ${configFile}.`);
