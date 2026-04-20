@@ -4,7 +4,8 @@
   "description": "CLI libs",
   "main": "dist/index.js",
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "bin": {
     "minhthetus-cli": "./dist/index.js"
@@ -14,7 +15,7 @@
     "build": "node scripts/precheck.js && rm -rf dist && node scripts/bundle-scripts.js && esbuild src/index.js --bundle --platform=node --outfile=dist/index.js --external:omelette",
     "publish": "node scripts/precheck.js --strict && pnpm publish --access public",
     "release": "pnpm version patch && npm run publish",
-    "postinstall": "node src/lib/utils/install-gum.js"
+    "postinstall": "node src/lib/utils/install-dependencies.js"
   },
   "repository": {
     "type": "git",

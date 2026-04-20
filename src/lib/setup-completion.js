@@ -1,14 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { emitShellCommand } = require('./utils/emit-shell-command');
+const { getSystemInfo } = require('./utils/system-info');
 
-function setupCompletion(binName) {
+function setupCompletion(binName, scriptPath) {
   console.log(`Setting up completion for ${binName}...`);
   try {
-    const shellEnv = process.env.SHELL || '';
-    const isZsh = shellEnv.includes('zsh');
-    const homeDir = process.env.HOME || process.env.USERPROFILE;
-    const configFile = isZsh ? path.join(homeDir, '.zshrc') : path.join(homeDir, '.bash_profile');
+    const { isZsh, homeDir, configFile } = getSystemInfo();
     
     // 1. Generate and save the static completion script
     const staticCompDir = path.join(homeDir, `.${binName}`);
@@ -21,8 +20,8 @@ function setupCompletion(binName) {
     console.log(`Generating static completion script at ${staticCompPath}...`);
     
     // Safely invoke the local CLI using the Node executable to get the completion string
-    const scriptPath = require.main ? require.main.filename : process.argv[1];
-    const completionOutput = execSync(`"${process.execPath}" "${scriptPath}" --completion`, { encoding: 'utf8' });
+    const targetScript = scriptPath || (require.main ? require.main.filename : process.argv[1]);
+    const completionOutput = execSync(`"${process.execPath}" "${targetScript}" --completion`, { encoding: 'utf8' });
     fs.writeFileSync(staticCompPath, completionOutput);
 
     // 2. Modify the user's rc file to source the newly created static script
@@ -35,24 +34,21 @@ function setupCompletion(binName) {
       // Remove old dynamic/slow completion block if it exists
       content = content.replace(new RegExp(`# begin ${binName} completion[\\s\\S]*?# end ${binName} completion\\n?`, 'g'), '');
       
-      // Append the new, fast static sourcing block with the shell function wrapper
+      // Append the new, fast static sourcing block
       const block = `
 # begin ${binName} completion
 [ -f "${staticCompPath}" ] && source "${staticCompPath}"
-
-# Shell wrapper to enable environment modifications (e.g. nvm use)
-${binName}() {
-  tmpfile=$(mktemp)
-  MINHTHETUS_SHELL_PIPE=$tmpfile command ${binName} "$@"
-  [ -s "$tmpfile" ] && source "$tmpfile"
-  rm -f "$tmpfile"
-}
 # end ${binName} completion
 `;
       
       fs.writeFileSync(configFile, content.trim() + '\n' + block);
       console.log(`\n✅ Success! Completion added to ${configFile}.`);
-      console.log(`Please run: "source ${configFile}" or Open a new terminal`);
+      
+      if (process.env.MINHTHETUS_SHELL_PIPE) {
+        emitShellCommand(`source "${configFile}"`);
+      } else {
+        console.log(`Please run: "source ${configFile}" or Open a new terminal`);
+      }
     } else {
       console.error(`Shell config file not found at ${configFile}`);
     }

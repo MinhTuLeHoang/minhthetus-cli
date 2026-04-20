@@ -44,8 +44,11 @@ async function showHelp(binName, { skipSplash = false, embeddedScripts = null } 
   } else {
     log(`${colors.bright}Usage:${colors.reset} ${binName} ${colors.cyan}<command>${colors.reset} [args]`);
   }
+
+  // spacing 1 line
+  log("");
   
-  const commandsHeader = gumStyle("AVAILABLE COMMANDS", { foreground: "99", "margin-top": "1" });
+  const commandsHeader = gumStyle("AVAILABLE COMMANDS", { foreground: "99", margin: "1 0 0 0" });
   if (commandsHeader) {
     log(commandsHeader.trim());
   } else {
@@ -140,6 +143,7 @@ async function showHelp(binName, { skipSplash = false, embeddedScripts = null } 
   log(`  ${colors.cyan}help${colors.reset}               Show this help message`);
   log(`  ${colors.cyan}setup-completion${colors.reset}   Install tab completion for your shell`);
   log(`  ${colors.cyan}remove-completion${colors.reset}  Uninstall tab completion for your shell`);
+  log(`  ${colors.cyan}uninstall${colors.reset}          Completely remove the CLI and all integrations`);
 
   if (splashPromise) await splashPromise;
 }
