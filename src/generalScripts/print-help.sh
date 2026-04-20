@@ -15,6 +15,7 @@
 #   HELP_DESCRIPTION="What the script does."
 #   HELP_OPTIONS="--opt      | Description\n--flag <v> | Description"
 #   HELP_EXAMPLE="./my-script.sh --opt"
+#   HELP_TAB_SIZE=4  # Optional: change left indentation (default: 3)
 #   source "$(dirname "$0")/print-help.sh" "$@"
 #
 # Method B: Custom print_usage() function
@@ -27,19 +28,9 @@
 #   source "$(dirname "$0")/print-help.sh" "$@"
 # -----------------------------------------------------------------------------
 
-
-# Colors (fallback if constants.sh is not sourced)
-[ -z "$NC" ] && NC='\033[0m'
-[ -z "$BLUE" ] && BLUE='\033[0;34m'
-[ -z "$YELLOW" ] && YELLOW='\033[0;33m'
-[ -z "$GREEN" ] && GREEN='\033[0;32m'
-[ -z "$PURPLE" ] && PURPLE='\033[0;35m'
-[ -z "$CYAN" ] && CYAN='\033[0;36m'
-[ -z "$RED" ] && RED='\033[0;31m'
-
-# Icons (fallback if constants.sh is not sourced)
-[ -z "$INFO" ] && INFO="ℹ️"
-[ -z "$ERROR" ] && ERROR="❌"
+# Configuration
+[ -z "$HELP_TAB_SIZE" ] && HELP_TAB_SIZE=3
+_INDENT=$(printf "%${HELP_TAB_SIZE}s" "")
 
 # Function to render a formatted help message
 # Arguments:
@@ -56,30 +47,30 @@ render_help() {
     local example="$5"
 
     printf "%b\n" ""
-    printf "%b\n" "${BLUE}${INFO} ${title} Usage Guide:${NC}"
-    printf "%b\n" "  ${usage}"
+    printf "%b\n" "${BLUE}${INFO}  ${BOLD}${title} Usage Guide:${NC}"
+    printf "%b\n" "${_INDENT}${usage}"
     printf "%b\n" ""
-    printf "%b\n" "${YELLOW}Description:${NC}"
-    printf "%b\n" "  ${description}"
+    printf "%b\n" "${YELLOW}${BOLD}Description:${NC}"
+    printf "%b\n" "${_INDENT}${description}"
     printf "%b\n" ""
-    printf "%b\n" "${YELLOW}Options:${NC}"
+    printf "%b\n" "${YELLOW}${BOLD}Options:${NC}"
     if [[ "$options" == *"|"* ]]; then
         printf "%b\n" "$options" | while IFS='|' read -r col1 col2; do
             if [[ -n "$col2" ]]; then
                 # Clean whitespace and print with fixed width for column 1
                 col1_clean=$(echo "$col1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
                 col2_clean=$(echo "$col2" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-                printf "  ${CYAN}%-22s${NC} %s\n" "$col1_clean" "$col2_clean"
+                printf "${_INDENT}${CYAN}%-22s${NC} %s\n" "$col1_clean" "$col2_clean"
             else
-                printf "%b\n" "  $col1"
+                printf "%b\n" "${_INDENT}$col1"
             fi
         done
     else
         printf "%b\n" "${options}"
     fi
     printf "%b\n" ""
-    printf "%b\n" "${YELLOW}Example:${NC}"
-    printf "%b\n" "  ${example}"
+    printf "%b\n" "${YELLOW}${BOLD}Example:${NC}"
+    printf "%b\n" "${_INDENT}${example}"
     printf "%b\n" ""
 }
 

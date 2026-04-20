@@ -1,9 +1,8 @@
 #!/bin/bash
 # Description: Detects Node version (via .nvmrc or nvm) and package manager (pnpm/npm/yarn).
 
-# Source constants and utilities
+# Source utilities
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/constants.sh"
 source "$SCRIPT_DIR/emit-shell-command.sh"
 
 # Path to gum
@@ -22,10 +21,10 @@ load_nvm() {
 NODE_VERSION=""
 if [ -f ".nvmrc" ]; then
     NODE_VERSION=$(cat .nvmrc | tr -d '[:space:]')
-    echo -e "${GREEN}${CHECK} Found .nvmrc: $NODE_VERSION${NC}" >&2
+    printf "%b\n" "${GREEN}${CHECK} Found .nvmrc: $NODE_VERSION${NC}" >&2
     emit_shell_command "nvm use"
 else
-    echo -e "${YELLOW}${INFO} No .nvmrc found. Detecting Node versions...${NC}" >&2
+    printf "%b\n" "${YELLOW}${INFO} No .nvmrc found. Detecting Node versions...${NC}" >&2
     load_nvm
     if command -v nvm >/dev/null 2>&1; then
         # Parse nvm ls output
@@ -45,15 +44,15 @@ else
                 # Create .nvmrc with major version
                 MAJOR_VERSION=$(echo "$NODE_VERSION" | grep -o 'v[0-9]\+' | head -n 1)
                 echo "$MAJOR_VERSION" > .nvmrc
-                echo -e "${GREEN}${CHECK} Created .nvmrc with $MAJOR_VERSION${NC}" >&2
+                printf "%b\n" "${GREEN}${CHECK} Created .nvmrc with $MAJOR_VERSION${NC}" >&2
                 emit_shell_command "nvm use $NODE_VERSION"
             fi
         else
-            echo -e "${RED}${ERROR} No Node versions found via nvm.${NC}" >&2
+            printf "%b\n" "${RED}${ERROR} No Node versions found via nvm.${NC}" >&2
             NODE_VERSION=$(node -v 2>/dev/null || echo "unknown")
         fi
     else
-        echo -e "${RED}${ERROR} nvm not found. Using current node version.${NC}" >&2
+        printf "%b\n" "${RED}${ERROR} nvm not found. Using current node version.${NC}" >&2
         NODE_VERSION=$(node -v 2>/dev/null || echo "unknown")
     fi
 fi
@@ -68,13 +67,13 @@ LOCK_FILES=()
 NUM_LOCKS=${#LOCK_FILES[@]}
 
 if [ $NUM_LOCKS -eq 0 ]; then
-    echo -e "${YELLOW}${INFO} No lock files found. Please choose a package manager.${NC}" >&2
+    printf "%b\n" "${YELLOW}${INFO} No lock files found. Please choose a package manager.${NC}" >&2
     PACKAGE_MANAGER=$("$GUM" choose "pnpm" "npm" "yarn" --header "Select Package Manager:")
 elif [ $NUM_LOCKS -eq 1 ]; then
     PACKAGE_MANAGER=${LOCK_FILES[0]}
-    echo -e "${GREEN}${CHECK} Detected package manager: $PACKAGE_MANAGER${NC}" >&2
+    printf "%b\n" "${GREEN}${CHECK} Detected package manager: $PACKAGE_MANAGER${NC}" >&2
 else
-    echo -e "${YELLOW}${INFO} Multiple lock files detected.${NC}" >&2
+    printf "%b\n" "${YELLOW}${INFO} Multiple lock files detected.${NC}" >&2
     PACKAGE_MANAGER=$(printf "%s\n" "${LOCK_FILES[@]}" | "$GUM" choose --header "Select Package Manager to use:")
     
     # Ask to delete others
@@ -87,7 +86,7 @@ else
             
             if "$GUM" confirm "Delete redundant $FILE_TO_DELETE?"; then
                 rm "$FILE_TO_DELETE"
-                echo -e "${GREEN}${CHECK} Deleted $FILE_TO_DELETE${NC}" >&2
+                printf "%b\n" "${GREEN}${CHECK} Deleted $FILE_TO_DELETE${NC}" >&2
             fi
         fi
     done

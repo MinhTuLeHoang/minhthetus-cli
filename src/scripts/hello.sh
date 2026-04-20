@@ -1,9 +1,8 @@
 #!/bin/bash
 # Description: Simple greeting script that accepts a --name parameter.
 
-# Source constants and utilities
+# Source utilities
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../generalScripts/constants.sh"
 
 # Define help metadata
 HELP_TITLE="Hello"

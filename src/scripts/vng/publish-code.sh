@@ -1,2 +1,3 @@
 #!/bin/bash
-echo "Publishing code..." # Description: Publish project code
+# Description: Publish project code
+echo "Publishing code..." 

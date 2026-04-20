@@ -1,2 +1,3 @@
 #!/bin/bash
-echo "Push logs..." # Description: Clean up system logs
+# Description: Clean up system logs
+echo "Push logs..." 

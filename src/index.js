@@ -182,9 +182,16 @@ completion.next(async () => {
   const newPath = `${binDir}${path.delimiter}${process.env.PATH}`;
 
   process.stderr.write('\n'); // Spacing top 1 line
-  const proc = spawn('sh', [scriptPath, ...scriptArgs], { 
+  const preamblePath = path.join(tempDir, 'generalScripts', 'constants.sh');
+  
+  const proc = spawn('bash', [scriptPath, ...scriptArgs], { 
     stdio: 'inherit',
-    env: { ...process.env, PATH: newPath, MINHTHETUS_TMP: tempDir } 
+    env: { 
+      ...process.env, 
+      PATH: newPath, 
+      MINHTHETUS_TMP: tempDir,
+      BASH_ENV: preamblePath
+    } 
   });
 
   proc.on('exit', code => {
