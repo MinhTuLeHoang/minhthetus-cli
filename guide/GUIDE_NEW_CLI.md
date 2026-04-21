@@ -56,13 +56,31 @@ If you want to organize commands under multiple categories:
 
 1.  **Choose a Category**: Decide where the script should live (directly in `src/scripts` or in a subfolder).
 2.  **Create the File**: Create a `.sh` file with a descriptive name (e.g., `src/scripts/my-feature.sh`).
-3.  **Make it Executable (Optional)**: While the CLI uses `sh` to execute scripts, it's good practice to ensure they have the proper shebang (`#!/bin/bash`).
-4.  **Add the Description**:
+3.  **Add the Required Header**:
     ```bash
+    #!/bin/bash
     # Description: My new awesome feature.
     ```
-5.  **Implement Logic**: Write your shell commands. Use `$1`, `$2`, etc., or a loop to parse any arguments passed.
-6.  **Test**:
+4.  **Implement Help & Logic**: Every command script should support a standardized help message.
+    - Define `HELP_*` variables.
+    - Source `print-help.sh`.
+    - **Note:** You do **NOT** need to source `constants.sh`. It is automatically sourced when you include `print-help.sh`.
+
+    ```bash
+    # 1. Define help metadata
+    HELP_TITLE="My Feature"
+    HELP_USAGE="minhthetus-cli my-feature [options]"
+    HELP_DESCRIPTION="Explanatory text about what this does."
+    HELP_OPTIONS="--opt | Description"
+    HELP_EXAMPLE="minhthetus-cli my-feature --opt"
+
+    # 2. Source the help system (this also provides colors/icons like ${GREEN}, ${CHECK}, etc.)
+    source "$(dirname "$0")/../generalScripts/print-help.sh" "$@"
+
+    # 3. Implement your logic
+    printf "%b\n" "${GREEN}${CHECK} Success!${NC}"
+    ```
+5.  **Test**:
     - Run `minhthetus-cli help` to verify the description appears.
     - Run your command: `minhthetus-cli my-feature`.
     - Try tab completion: `minhthetus-cli my<TAB>`.

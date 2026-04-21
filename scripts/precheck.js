@@ -15,7 +15,7 @@ const isStrict = process.argv.includes('--strict');
 let hasErrors = false;
 let foundIssues = false;
 
-function checkScripts(dir) {
+function checkScripts(dir, options = { requireHelp: false }) {
   if (!fs.existsSync(dir)) return;
   
   const items = fs.readdirSync(dir);
@@ -24,12 +24,14 @@ function checkScripts(dir) {
     const stat = fs.statSync(fullPath);
 
     if (stat.isDirectory()) {
-      checkScripts(fullPath);
+      checkScripts(fullPath, options);
     } else if (item.endsWith('.sh')) {
       const content = fs.readFileSync(fullPath, 'utf8');
+      const relPath = path.relative(path.resolve(__dirname, '..'), fullPath);
+
+      // Check 1: Description Header
       if (!content.includes('# Description:')) {
         foundIssues = true;
-        const relPath = path.relative(path.resolve(__dirname, '..'), fullPath);
         if (isStrict) {
             console.error(`${RED}${BOLD}Error:${RESET} Script "${relPath}" is missing the "${BOLD}# Description:${RESET}" header.`);
             hasErrors = true;
@@ -37,14 +39,25 @@ function checkScripts(dir) {
             console.warn(`${YELLOW}${BOLD}Warning:${RESET} Script "${relPath}" is missing the "${BOLD}# Description:${RESET}" header.`);
         }
       }
+
+      // Check 2: Help Function Call (Optional based on options)
+      if (options.requireHelp && !content.includes('print-help.sh')) {
+        foundIssues = true;
+        // if (isStrict) {
+        //     console.error(`${RED}${BOLD}Error:${RESET} Command script "${relPath}" must call the help function (${BOLD}print-help.sh${RESET}).`);
+        //     hasErrors = true;
+        // } else {
+            console.warn(`${YELLOW}${BOLD}Warning:${RESET} Command script "${relPath}" is missing the help function call (${BOLD}print-help.sh${RESET}).`);
+        // }
+      }
     }
   }
 }
 
 console.log(`${BOLD}Running pre-check for shell scripts...${RESET}`);
 
-checkScripts(scriptsDir);
-checkScripts(generalScriptsDir);
+checkScripts(scriptsDir, { requireHelp: true });
+checkScripts(generalScriptsDir, { requireHelp: false });
 
 if (!foundIssues) {
   console.log(`${BOLD}All shell scripts passed validation.${RESET}`);
