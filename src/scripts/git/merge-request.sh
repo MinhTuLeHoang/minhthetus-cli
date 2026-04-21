@@ -108,10 +108,12 @@ printf "%b\n" "${BLUE}${HOURGLASS} Orchestrating Merge Request/Pull Request to m
 # Track if we successfully automated the creation
 SUCCESS=false
 
-# Case 1: GitHub with gh CLI
-if [[ "$REMOTE_URL" == *"github.com"* ]] && command -v gh &> /dev/null; then
-    gh pr create --base master --head "$CURRENT_BRANCH" --title "$COMMIT_MESSAGE" --body "Automatically created by minhthetus-cli"
-    SUCCESS=true
+# Case 1: GitHub
+if [[ "$REMOTE_URL" == *"github.com"* ]]; then
+    if command -v gh &> /dev/null; then
+        gh pr create --base master --head "$CURRENT_BRANCH" --title "$COMMIT_MESSAGE" --body "Automatically created by minhthetus-cli"
+        SUCCESS=true
+    fi
 
 # Case 2: GitLab (using push options)
 elif [[ "$REMOTE_URL" == *"gitlab"* ]]; then
