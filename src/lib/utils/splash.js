@@ -86,12 +86,12 @@ async function showSplash(wait = true) {
   });
 
   if (wait) {
-    process.stderr.write("\n\n\n\n\n");
+    process.stderr.write("\n".repeat(5));
     linesBelow = 2; // In wait mode, we just stay on the logo line mostly or finish there
     await animation;
   } else {
     // 2 lines top + 1 splash line + 2 lines bottom = 5 newlines
-    process.stderr.write("\n\n\n\n\n");
+    process.stderr.write("\n".repeat(5));
     linesBelow = 3; // Account for the 2 bottom lines + current line to jump back to splash line
     return animation;
   }

@@ -12,7 +12,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "rm -rf dist && node scripts/bundle-scripts.js && esbuild src/index.js --bundle --platform=node --outfile=dist/index.js --external:omelette",
+    "build": "rm -rf dist && node scripts/bundle-scripts.js && esbuild src/index.js --bundle --platform=node --minify --legal-comments=none --outfile=dist/index.js --external:omelette",
     "publish": "pnpm publish --access public",
     "release": "pnpm version patch && npm run publish",
     "prebuild": "node scripts/precheck.js",
