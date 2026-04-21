@@ -15,7 +15,9 @@ NC='\033[0m' # No Color
 CHECK="✅"
 ERROR="❌"
 INFO="ℹ️"
+WARNING="⚠️"
 TAG="🏷️"
+
 ROCKET="🚀"
 HAMMER="🔨"
 HOURGLASS="⏳"

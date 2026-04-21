@@ -8,8 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HELP_TITLE="Hello"
 HELP_USAGE="./hello.sh [options]"
 HELP_DESCRIPTION="A simple greeting script that welcomes you by name."
-HELP_OPTIONS="--name <name> | The name to greet (default: User)
--h, --help     | Show this help message"
+HELP_OPTIONS="--name <name> | The name to greet (default: User)"
 HELP_EXAMPLE="./hello.sh --name Antigravity"
 
 # Check for help flags

@@ -32,6 +32,11 @@
 [ -z "$HELP_TAB_SIZE" ] && HELP_TAB_SIZE=3
 _INDENT=$(printf "%${HELP_TAB_SIZE}s" "")
 
+# Load constants (colors, icons, etc.)
+_GENERAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+[ -f "$_GENERAL_DIR/constants.sh" ] && source "$_GENERAL_DIR/constants.sh"
+
+
 # Function to render a formatted help message
 # Arguments:
 # 1: Title (e.g., "Super Tag Script")
@@ -90,9 +95,18 @@ check_and_print_help() {
     if [[ "$found_help" == "true" ]]; then
         # If the caller defined HELP_* variables, use them to render
         if [[ -n "$HELP_TITLE" ]]; then
+            # Automatically add help option if not already present
+            if [[ "$HELP_OPTIONS" != *"--help"* ]]; then
+                if [[ -n "$HELP_OPTIONS" ]]; then
+                    HELP_OPTIONS="${HELP_OPTIONS}\n-h, --help       | Show this help message."
+                else
+                    HELP_OPTIONS="-h, --help       | Show this help message."
+                fi
+            fi
             render_help "$HELP_TITLE" "$HELP_USAGE" "$HELP_DESCRIPTION" "$HELP_OPTIONS" "$HELP_EXAMPLE"
             exit 0
         # Alternatively, if they defined a print_usage function
+
         elif declare -f print_usage > /dev/null; then
             print_usage
             exit 0
