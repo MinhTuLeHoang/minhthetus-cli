@@ -8,7 +8,7 @@ GENERAL_SCRIPTS_DIR="$SCRIPT_DIR/../../generalScripts"
 HELP_TITLE="Git Merge Request"
 HELP_USAGE="minhthetus-cli git merge-request [options]"
 HELP_DESCRIPTION="Automatically detects bump type from branch prefix, updates version, and opens a MR/PR to master."
-HELP_OPTIONS="-M, --major      | Force major version bump\n-N, --minor      | Force minor version bump\n-P, --patch      | Force patch version bump\n-m <message>     | Commit message (default: [bump version])"
+HELP_OPTIONS="-M, --major      | Force major version bump\n-N, --minor      | Force minor version bump\n-P, --patch      | Force patch version bump\n--no-version     | Skip version bump step\n-m <message>     | Commit message (default: [bump version])"
 HELP_EXAMPLE="minhthetus-cli git merge-request -m \"Add user authentication\""
 
 source "$GENERAL_SCRIPTS_DIR/print-help.sh" "$@"
@@ -19,6 +19,7 @@ set -e
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 INCREMENT_TYPE=""
 COMMIT_MESSAGE=""
+SKIP_VERSION=false
 
 # Parse arguments
 ARGS=("$@")
@@ -44,6 +45,10 @@ while [[ ${#ARGS[@]} -gt 0 ]]; do
                 COMMIT_MESSAGE="_PROMPT_"
                 ARGS=("${ARGS[@]:1}")
             fi
+            ;;
+        --no-version)
+            SKIP_VERSION=true
+            ARGS=("${ARGS[@]:1}")
             ;;
         *)
             ARGS=("${ARGS[@]:1}")
@@ -73,14 +78,12 @@ if [[ -z "$COMMIT_MESSAGE" ]]; then
 fi
 
 # --- 2. Bump version ---
-if [ -f "package.json" ]; then
+if [[ "$SKIP_VERSION" == "true" ]]; then
+    printf "%b\n" "${BLUE}${INFO} Skipping version bump as requested.${NC}"
+elif [ -f "package.json" ]; then
     printf "%b\n" "${BLUE}${HAMMER} Bumping ${INCREMENT_TYPE} version...${NC}"
-    # Attempt to bump version without git tagging yet
-    if command -v pnpm &> /dev/null; then
-        pnpm version "$INCREMENT_TYPE" --no-git-tag-version
-    else
-        npm version "$INCREMENT_TYPE" --no-git-tag-version
-    fi
+    
+    npm version "$INCREMENT_TYPE" --no-git-tag-version
 else
     printf "%b\n" "${YELLOW}${WARNING} No package.json found. Skipping version bump.${NC}"
 fi
@@ -102,22 +105,49 @@ REMOTE_URL=$(git remote get-url origin)
 printf "\n"
 printf "%b\n" "${BLUE}${HOURGLASS} Orchestrating Merge Request/Pull Request to master...${NC}"
 
-if [[ "$REMOTE_URL" == *"github.com"* ]]; then
-    # GitHub Support
-    if command -v gh &> /dev/null; then
-        gh pr create --base master --head "$CURRENT_BRANCH" --title "$COMMIT_MESSAGE" --body "Automatically created by minhthetus-cli"
-    else
-        printf "%b\n" "${YELLOW}${WARNING} gh CLI not found. Manual PR link:${NC}"
-        REPO_PATH=$(echo "$REMOTE_URL" | sed -E 's/.*github.com[:\/](.*)\.git/\1/')
-        printf "https://github.com/$REPO_PATH/compare/master...$CURRENT_BRANCH?expand=1\n"
-    fi
+# Track if we successfully automated the creation
+SUCCESS=false
+
+# Case 1: GitHub with gh CLI
+if [[ "$REMOTE_URL" == *"github.com"* ]] && command -v gh &> /dev/null; then
+    gh pr create --base master --head "$CURRENT_BRANCH" --title "$COMMIT_MESSAGE" --body "Automatically created by minhthetus-cli"
+    SUCCESS=true
+
+# Case 2: GitLab (using push options)
 elif [[ "$REMOTE_URL" == *"gitlab"* ]]; then
-    # GitLab Support (via Git Push Options)
     printf "%b\n" "${CYAN}${INFO} Utilizing GitLab push options for MR creation...${NC}"
-    git push -o mr.create -o mr.target=master -o mr.title="$COMMIT_MESSAGE" -o mr.remove_source_branch origin "$CURRENT_BRANCH"
+    if git push -o mr.create -o mr.target=master -o mr.title="$COMMIT_MESSAGE" -o mr.remove_source_branch origin "$CURRENT_BRANCH"; then
+        SUCCESS=true
+    fi
+
+# Case 3: Agit Fallback (Gitea, etc.)
 else
-    # Generic fallback
-    printf "%b\n" "${YELLOW}${WARNING} Non-standard remote detected. Please create your MR/PR manually.${NC}"
+    printf "%b\n" "${CYAN}${INFO} Attempting to create PR via Agit (refs/for/master)...${NC}"
+    # Agit requires a topic (-o topic). We use the current branch name.
+    if git push origin "HEAD:refs/for/master" -o topic="$CURRENT_BRANCH" -o title="$COMMIT_MESSAGE" -o description="Automatically created by minhthetus-cli"; then
+        SUCCESS=true
+    else
+        printf "%b\n" "${YELLOW}${WARNING} Agit push failed. This host might not support Agit.${NC}"
+    fi
+fi
+
+# Fallback: Print Manual Link if automation was not possible or failed
+if [ "$SUCCESS" = false ]; then
+    printf "\n"
+    printf "%b\n" "${YELLOW}${WARNING} Could not automate PR/MR creation. Manual Link:${NC}"
+    if [[ "$REMOTE_URL" == *"github.com"* ]]; then
+        # Extract user/repo from formats like git@github.com:user/repo.git or https://github.com/user/repo.git
+        REPO_PATH=$(echo "$REMOTE_URL" | sed -E 's/.*github.com[:\/](.*)\.git/\1/')
+        printf "  https://github.com/$REPO_PATH/compare/master...$CURRENT_BRANCH?expand=1\n"
+    elif [[ "$REMOTE_URL" == *"gitlab"* ]]; then
+        # Best-effort extraction for GitLab
+        REPO_PATH=$(echo "$REMOTE_URL" | sed -E 's/.*gitlab.*[:\/](.*)\.git/\1/')
+        # Extract domain (e.g. gitlab.com or self-hosted)
+        DOMAIN=$(echo "$REMOTE_URL" | sed -E 's/.*@([^:\/]+).*/\1/' | sed -E 's/http(s)?:\/\///')
+        printf "  https://$DOMAIN/$REPO_PATH/-/merge_requests/new?merge_request[source_branch]=$CURRENT_BRANCH&merge_request[target_branch]=master\n"
+    else
+        printf "  Please visit your git provider's web interface to open a PR/MR manually.\n"
+    fi
 fi
 
 printf "\n"
