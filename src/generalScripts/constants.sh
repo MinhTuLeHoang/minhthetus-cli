@@ -1,4 +1,5 @@
 #!/bin/bash
+# Description: Global constants, colors, and utility functions for shell scripts.
 
 # Colors
 RED='\033[0;31m'
@@ -7,13 +8,16 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
+BOLD='\033[1m'
 NC='\033[0m' # No Color
 
 # Icons
 CHECK="✅"
 ERROR="❌"
 INFO="ℹ️"
+WARNING="⚠️"
 TAG="🏷️"
+
 ROCKET="🚀"
 HAMMER="🔨"
 HOURGLASS="⏳"

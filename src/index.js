@@ -2,122 +2,214 @@
 
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { spawn } = require('child_process');
 const omelette = require('omelette');
 
 const { showHelp } = require('./lib/help');
 const { setupCompletion } = require('./lib/setup-completion');
-const { removeCompletion } = require('./lib/remove-completion');
+const { installGum, GUM_PATH } = require('./lib/utils/install-gum');
+const { setupShellWrapper } = require('./lib/utils/setup-shell-wrapper');
+
+// Try to load embedded scripts. Fallback to empty if not generated yet.
+let embedded = { scripts: {}, generalScripts: {} };
+try {
+  embedded = require('./generated-scripts');
+} catch (e) {
+  // During initial build, this might be missing
+}
 
 const binName = 'minhthetus-cli';
-const scriptsDirRoot = path.join(__dirname, 'scripts');
+
+/**
+ * Recreates the script structure in a temporary directory to allow sourcing and execution.
+ */
+function extractScripts() {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), `${binName}-`));
+  
+  const scriptsDir = path.join(tempDir, 'scripts');
+  const genDir = path.join(tempDir, 'generalScripts');
+  
+  fs.mkdirSync(scriptsDir, { recursive: true });
+  fs.mkdirSync(genDir, { recursive: true });
+
+  for (const [relPath, content] of Object.entries(embedded.scripts)) {
+    const fullPath = path.join(scriptsDir, relPath);
+    fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+    fs.writeFileSync(fullPath, content, { mode: 0o755 });
+  }
+
+  for (const [relPath, content] of Object.entries(embedded.generalScripts)) {
+    const fullPath = path.join(genDir, relPath);
+    fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+    fs.writeFileSync(fullPath, content, { mode: 0o755 });
+  }
+
+  return tempDir;
+}
+
+/**
+ * Ensures gum is installed and available.
+ */
+async function ensureGum() {
+  if (!fs.existsSync(GUM_PATH)) {
+    process.stderr.write("✦ Improving your experience (installing assets)...\n");
+    try {
+      await installGum();
+    } catch (e) {
+      console.error("Warning: Failed to install gum. Some UI features may be degraded.");
+    }
+  }
+}
 
 // --- Completion Logic ---
 const completion = omelette(binName);
 
 completion.on('complete', (fragment, { reply, line }) => {
-  // Use regex to split and filter out empty strings from trailing spaces
   const parts = line.split(/\s+/).filter(Boolean);
-  // args are words after binName, excluding the word currently being typed
-  // If line ends with space, then we are completing a NEW word.
-  // If line does NOT end with space, then we are completing the LAST word.
   const isNewWord = line.endsWith(' ');
   const args = parts.slice(1, isNewWord ? parts.length : parts.length - 1);
   
-  let currentDir = scriptsDirRoot;
+  const scriptKeys = Object.keys(embedded.scripts);
   let matches = [];
 
-  // If this is the first argument, include built-in commands
   if (args.length === 0) {
-    matches.push('help', 'setup-completion', 'remove-completion');
+    matches.push('help', 'setup-completion', 'uninstall');
   }
 
-  // Navigate through subfolders based on existing arguments
-  for (const arg of args) {
-    if (['help', 'setup-completion', 'remove-completion', 'hello'].includes(arg)) {
-       return reply([]); 
-    }
-    const nextDir = path.join(currentDir, arg);
-    if (fs.existsSync(nextDir) && fs.statSync(nextDir).isDirectory()) {
-      currentDir = nextDir;
-    } else {
-      // Hit a file or invalid path
-      return reply([]);
-    }
-  }
+  // Find matches based on current args prefix
+  const prefix = args.join('/');
+  const subItems = new Set();
 
-  // Find available items in currentDir
-  if (fs.existsSync(currentDir) && fs.statSync(currentDir).isDirectory()) {
-    const items = fs.readdirSync(currentDir);
-    for (const item of items) {
-      const fullPath = path.join(currentDir, item);
-      const stat = fs.statSync(fullPath);
-      if (stat.isDirectory()) {
-        matches.push(item);
-      } else if (item.endsWith('.sh')) {
-        matches.push(item.slice(0, -3));
+  for (const key of scriptKeys) {
+    if (prefix === '' || key.startsWith(prefix + (prefix ? '/' : ''))) {
+      const remaining = prefix === '' ? key : key.slice(prefix.length + 1);
+      const firstPart = remaining.split('/')[0];
+      if (firstPart) {
+        if (firstPart.endsWith('.sh')) {
+           subItems.add(firstPart.slice(0, -3));
+        } else {
+           subItems.add(firstPart);
+        }
       }
     }
   }
 
-  reply(matches);
+  reply([...matches, ...Array.from(subItems)]);
 });
 
-completion.next(() => {
-  // --- Execution Logic ---
+completion.next(async () => {
+  await ensureGum();
   const fullArgs = process.argv.slice(2);
 
   if (fullArgs.length === 0 || ['help', '--help', '-h'].includes(fullArgs[0])) {
-    showHelp(binName);
+    await showHelp(binName, { embeddedScripts: embedded.scripts });
+    process.stderr.write('\n'); // Spacing end 1 line
     process.exit(0);
   }
 
   if (fullArgs[0] === 'setup-completion') {
-    setupCompletion(binName, completion);
+    process.stderr.write('\n'); // Spacing top 1 line
+    setupCompletion(binName);
+    setupShellWrapper(binName);
+    process.stderr.write('\n'); // Spacing end 1 line
     process.exit(0);
   }
 
-  if (fullArgs[0] === 'remove-completion') {
-    removeCompletion(binName);
+
+
+  if (fullArgs[0] === 'uninstall') {
+    process.stderr.write('\n'); // Spacing top 1 line
+    const { uninstall } = require('./lib/utils/uninstall');
+    
+    // First, perform the internal cleanup (completions, shell wrappers, etc.)
+    await uninstall(binName);
+    
+    process.stderr.write(`\n✦ Attempting to remove the package globally...\n`);
+    const { execSync } = require('child_process');
+    
+    // Try pnpm first, then npm. Standard error is ignored to keep it clean if one fails.
+    try {
+      try {
+        process.stderr.write(`Running: pnpm uninstall -g ${binName}\n`);
+        execSync(`pnpm uninstall -g ${binName}`, { stdio: 'inherit' });
+      } catch (e) {
+        process.stderr.write(`Running: npm uninstall -g ${binName}\n`);
+        execSync(`npm uninstall -g ${binName}`, { stdio: 'inherit' });
+      }
+      process.stderr.write(`\n✅ Package removed successfully.\n`);
+    } catch (err) {
+      process.stderr.write(`\n⚠️ Could not automatically remove the package.\n`);
+      process.stderr.write(`Please run one of the following manually to finish:\n`);
+      process.stderr.write(`   pnpm uninstall -g ${binName}\n`);
+      process.stderr.write(`   npm uninstall -g ${binName}\n`);
+    }
+    
+    process.stderr.write('\n'); // Spacing end 1 line
     process.exit(0);
   }
 
-  // Find the script path by consuming arguments
-  let scriptPath = null;
-  let currentSearchDir = scriptsDirRoot;
+  // Find the script in embedded scripts
+  let matchedRelPath = null;
   let consumedCount = 0;
 
-  for (let i = 0; i < fullArgs.length; i++) {
-    const arg = fullArgs[i];
-    const potentialFile = path.join(currentSearchDir, `${arg}.sh`);
-    const potentialDir = path.join(currentSearchDir, arg);
-
-    if (fs.existsSync(potentialFile) && fs.statSync(potentialFile).isFile()) {
-      scriptPath = potentialFile;
-      consumedCount = i + 1;
-      break;
-    } else if (fs.existsSync(potentialDir) && fs.statSync(potentialDir).isDirectory()) {
-      currentSearchDir = potentialDir;
-    } else {
+  // Try to find the longest matching path
+  for (let i = fullArgs.length; i > 0; i--) {
+    const potentialPath = fullArgs.slice(0, i).join('/') + '.sh';
+    if (embedded.scripts[potentialPath]) {
+      matchedRelPath = potentialPath;
+      consumedCount = i;
       break;
     }
   }
 
-  if (!scriptPath) {
-    console.error(`\nError: command "${fullArgs.join(' ')}" not found.`);
-    showHelp(binName);
+  if (!matchedRelPath) {
+    process.stderr.write('\n'); // Spacing top 1 line
+    console.error(`\x1b[31m\x1b[1mError:\x1b[0m command "${fullArgs.join(' ')}" not found.`);
+    process.stderr.write('\n'); // Spacing between error and help
+    await showHelp(binName, { skipSplash: true, embeddedScripts: embedded.scripts });
+    process.stderr.write('\n'); // Spacing end 1 line
     process.exit(1);
   }
 
   const scriptArgs = fullArgs.slice(consumedCount);
+  
+  // Extract scripts to temp dir for execution
+  const tempDir = extractScripts();
+  const scriptPath = path.join(tempDir, 'scripts', matchedRelPath);
 
-  spawn('sh', [scriptPath, ...scriptArgs], { stdio: 'inherit' })
-    .on('exit', code => process.exit(code || 0))
-    .on('error', err => {
-      console.error('Execution error:', err.message);
-      process.exit(1);
-    });
+  const binDir = path.dirname(GUM_PATH);
+  const newPath = `${binDir}${path.delimiter}${process.env.PATH}`;
+
+  process.stderr.write('\n'); // Spacing top 1 line
+  const preamblePath = path.join(tempDir, 'generalScripts', 'constants.sh');
+  
+  const proc = spawn('bash', [scriptPath, ...scriptArgs], { 
+    stdio: 'inherit',
+    env: { 
+      ...process.env, 
+      PATH: newPath, 
+      MINHTHETUS_TMP: tempDir,
+      BASH_ENV: preamblePath
+    } 
+  });
+
+  proc.on('exit', code => {
+    // Cleanup temp dir
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch (e) {}
+    process.stderr.write('\n'); // Spacing end 1 line
+    process.exit(code || 0);
+  });
+
+  proc.on('error', err => {
+    console.error(`\x1b[31m\x1b[1mExecution error:\x1b[0m ${err.message}`);
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch (e) {}
+    process.exit(1);
+  });
 });
 
 completion.init();
-
