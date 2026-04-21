@@ -12,23 +12,18 @@ function cleanShellConfig(binName) {
   
   process.stderr.write(`✦ Removing completion and shell integration for ${binName}...\n`);
 
-  // 1. Remove the static completion and wrapper scripts if they exist
+  // 1. Remove the entire configuration directory (including completions, wrappers, and git accounts)
   const staticDir = path.join(homeDir, `.${binName}`);
-  const staticCompPath = path.join(staticDir, 'completion.sh');
-  const staticWrapperPath = path.join(staticDir, 'shell-wrapper.sh');
   
-  if (fs.existsSync(staticCompPath)) {
-    process.stderr.write(`  Deleting static completion script...\n`);
-    fs.unlinkSync(staticCompPath);
-  }
-  if (fs.existsSync(staticWrapperPath)) {
-    process.stderr.write(`  Deleting shell wrapper script...\n`);
-    fs.unlinkSync(staticWrapperPath);
-  }
-  
-  // Optionally remove the directory if it's empty
-  if (fs.existsSync(staticDir) && fs.readdirSync(staticDir).length === 0) {
-    fs.rmdirSync(staticDir);
+  if (fs.existsSync(staticDir)) {
+    process.stderr.write(`  Deleting configuration directory: ${staticDir}\n`);
+    try {
+      // Use rmSync with recursive and force for a complete cleanup
+      fs.rmSync(staticDir, { recursive: true, force: true });
+      process.stderr.write(`  ✅ Configuration directory removed.\n`);
+    } catch (err) {
+      process.stderr.write(`  ⚠️ Failed to remove directory: ${err.message}\n`);
+    }
   }
 
   // 2. Remove the blocks from the shell config file (.zshrc or .bash_profile)

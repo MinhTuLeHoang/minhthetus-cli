@@ -79,7 +79,7 @@ fi
 
 # --- 2. Bump version ---
 if [[ "$SKIP_VERSION" == "true" ]]; then
-    printf "%b\n" "${BLUE}${INFO} Skipping version bump as requested.${NC}"
+    printf "%b\n" "${BLUE}${INFO}  Skipping version bump as requested.${NC}"
 elif [ -f "package.json" ]; then
     printf "%b\n" "${BLUE}${HAMMER} Bumping ${INCREMENT_TYPE} version...${NC}"
     
@@ -92,11 +92,12 @@ fi
 printf "%b\n" "${BLUE}${ROCKET} Committing changes...${NC}"
 git add .
 if git diff --staged --quiet; then
-    printf "%b\n" "${YELLOW}${INFO} No changes to commit.${NC}"
+    printf "%b\n" "${YELLOW}${INFO}  No changes to commit.${NC}"
 else
     git commit -m "$COMMIT_MESSAGE"
 fi
 
+printf "\n"
 printf "%b\n" "${BLUE}${ROCKET} Pushing current branch to origin...${NC}"
 git push origin "$CURRENT_BRANCH"
 
@@ -133,23 +134,35 @@ else
     fi
 fi
 
-# Fallback: Print Manual Link if automation was not possible or failed
-if [ "$SUCCESS" = false ]; then
-    printf "\n"
-    printf "%b\n" "${YELLOW}${WARNING} Could not automate PR/MR creation. Manual Link:${NC}"
-    if [[ "$REMOTE_URL" == *"github.com"* ]]; then
-        # Extract user/repo from formats like git@github.com:user/repo.git or https://github.com/user/repo.git
-        REPO_PATH=$(echo "$REMOTE_URL" | sed -E 's/.*github.com[:\/](.*)\.git/\1/')
-        printf "  https://github.com/$REPO_PATH/compare/master...$CURRENT_BRANCH?expand=1\n"
-    elif [[ "$REMOTE_URL" == *"gitlab"* ]]; then
-        # Best-effort extraction for GitLab
-        REPO_PATH=$(echo "$REMOTE_URL" | sed -E 's/.*gitlab.*[:\/](.*)\.git/\1/')
-        # Extract domain (e.g. gitlab.com or self-hosted)
-        DOMAIN=$(echo "$REMOTE_URL" | sed -E 's/.*@([^:\/]+).*/\1/' | sed -E 's/http(s)?:\/\///')
-        printf "  https://$DOMAIN/$REPO_PATH/-/merge_requests/new?merge_request[source_branch]=$CURRENT_BRANCH&merge_request[target_branch]=master\n"
-    else
-        printf "  Please visit your git provider's web interface to open a PR/MR manually.\n"
-    fi
+# --- 5. Manual Link Generation (ALWAYS shown for GitHub and GitLab) ---
+printf "\n"
+if [ "$SUCCESS" = true ]; then
+    printf "%b\n" "${GREEN}${CHECK} Automation successful! For reference, your manual link is:${NC}"
+else
+    printf "%b\n" "${YELLOW}${WARNING} Could not automate PR/MR creation. Manual link:${NC}"
+fi
+
+if [[ "$REMOTE_URL" == *"github.com"* ]]; then
+    # Extract user/repo from formats like git@github.com:user/repo.git or https://github.com/user/repo.git
+    REPO_PATH=$(echo "$REMOTE_URL" | sed -E 's/.*github.com[:\/](.*)\.git/\1/')
+    
+    # URL Encode Title and Body for the manual link
+    TITLE_ENC=$(echo "$COMMIT_MESSAGE" | sed 's/ /%20/g; s/\[/%5B/g; s/\]/%5D/g')
+    BODY_ENC="Automatically%20created%20by%20minhthetus-cli"
+    
+    printf "  https://github.com/$REPO_PATH/compare/master...$CURRENT_BRANCH?expand=1&quick_pull=1&title=$TITLE_ENC&body=$BODY_ENC\n"
+elif [[ "$REMOTE_URL" == *"gitlab"* ]]; then
+    # Improved extraction for GitLab (handles subgroups correctly)
+    REPO_PATH=$(echo "$REMOTE_URL" | sed -E 's/.*@//;s/http(s)?:\/\///;s/^[^\/:]+[\/:]//;s/\.git$//')
+    DOMAIN=$(echo "$REMOTE_URL" | sed -E 's/.*@//;s/http(s)?:\/\///;s/[:\/].*//')
+    
+    # URL Encode Title and Description for the manual link
+    TITLE_ENC=$(echo "$COMMIT_MESSAGE" | sed 's/ /%20/g; s/\[/%5B/g; s/\]/%5D/g')
+    DESC_ENC="Automatically%20created%20by%20minhthetus-cli"
+    
+    printf "  https://$DOMAIN/$REPO_PATH/-/merge_requests/new?merge_request[source_branch]=$CURRENT_BRANCH&merge_request[target_branch]=master&merge_request[title]=$TITLE_ENC&merge_request[description]=$DESC_ENC\n"
+elif [ "$SUCCESS" = false ]; then
+    printf "  Please visit your git provider's web interface to open a PR/MR manually.\n"
 fi
 
 printf "\n"
