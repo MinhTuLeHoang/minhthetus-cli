@@ -52,11 +52,13 @@ render_help() {
     local example="$5"
 
     printf "%b\n" ""
-    printf "%b\n" "${BLUE}${INFO}  ${BOLD}${title} Usage Guide:${NC}"
+    printf "%b\n" "${BLUE}${INFO} ${BOLD}${title} Usage Guide:${NC}"
     printf "%b\n" "${_INDENT}${usage}"
     printf "%b\n" ""
     printf "%b\n" "${YELLOW}${BOLD}Description:${NC}"
-    printf "%b\n" "${_INDENT}${description}"
+    printf "%b\n" "$description" | while IFS= read -r line; do
+        [ -n "$line" ] && printf "%b\n" "${_INDENT}${line}"
+    done
     printf "%b\n" ""
     printf "%b\n" "${YELLOW}${BOLD}Options:${NC}"
     if [[ "$options" == *"|"* ]]; then
@@ -67,15 +69,20 @@ render_help() {
                 col2_clean=$(echo "$col2" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
                 printf "${_INDENT}${CYAN}%-22s${NC} %s\n" "$col1_clean" "$col2_clean"
             else
-                printf "%b\n" "${_INDENT}$col1"
+                col1_clean=$(echo "$col1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+                [ -n "$col1_clean" ] && printf "%b\n" "${_INDENT}$col1_clean"
             fi
         done
     else
-        printf "%b\n" "${options}"
+        printf "%b\n" "$options" | while IFS= read -r line; do
+             [ -n "$line" ] && printf "%b\n" "${_INDENT}${line}"
+        done
     fi
     printf "%b\n" ""
     printf "%b\n" "${YELLOW}${BOLD}Example:${NC}"
-    printf "%b\n" "${_INDENT}${example}"
+    printf "%b\n" "$example" | while IFS= read -r line; do
+        [ -n "$line" ] && printf "%b\n" "${_INDENT}${line}"
+    done
     printf "%b\n" ""
 }
 

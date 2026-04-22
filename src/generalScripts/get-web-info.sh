@@ -6,7 +6,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/emit-shell-command.sh"
 
 # Path to gum
-GUM="$SCRIPT_DIR/../../vendor/bin/gum"
+GUM="gum"
+if ! command -v gum >/dev/null 2>&1; then
+    GUM="$SCRIPT_DIR/../../vendor/bin/gum"
+fi
 
 # Function to load nvm into the current shell session
 load_nvm() {
@@ -33,15 +36,32 @@ get_web_info() {
             nvm use "$G_NODE_VERSION"
         fi
     else
-        printf "%b\n" "${YELLOW}${INFO} No .nvmrc found. Detecting Node versions...${NC}" >&2
+        printf "%b\n" "${YELLOW}${INFO} No .nvmrc found.${NC}" >&2
         if command -v nvm >/dev/null 2>&1; then
-            # Parse nvm ls output
-            local RAW_VERSIONS=$(nvm ls --no-colors)
+            local RAW_VERSIONS=""
+            local START_TIME=$(date +%s)
+
+            # Fast Path: Direct directory listing (instant)
+            local NVM_DIR_LOCAL="${NVM_DIR:-$HOME/.nvm}"
+            if [ -d "$NVM_DIR_LOCAL/versions/node" ]; then
+                RAW_VERSIONS=$(ls -1 "$NVM_DIR_LOCAL/versions/node" 2>/dev/null)
+            fi
+
+            # Fallback: Slow nvm list (only if directory structure is different)
+            if [ -z "$RAW_VERSIONS" ]; then
+                RAW_VERSIONS=$(nvm list --no-colors)
+            fi
+
+            local DURATION=$(( $(date +%s) - START_TIME ))
+            if [ $DURATION -gt 0 ]; then
+                printf "%b\n" "${GREEN}${CHECK} Fetched in ${DURATION}s${NC}" >&2
+            fi
             # Extract things like v20.10.0
-            local VERSIONS=$(echo "$RAW_VERSIONS" | grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]' | sort -Vr | uniq)
+            # Extract only the local version numbers (lines starting with space/arrow and 'v')
+            local VERSIONS=$(echo "$RAW_VERSIONS" | grep -E '^[[:space:]]*(->)?[[:space:]]*v[0-9]' | grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]' | sort -Vr | uniq)
             
             if [ -z "$VERSIONS" ]; then
-                 VERSIONS=$(echo "$RAW_VERSIONS" | grep -E "^[[:space:]]*v[0-9]" | sed 's/[[:space:]]*//' | cut -f1 -d' ' | sort -Vr)
+                 VERSIONS=$(echo "$RAW_VERSIONS" | grep -E '^[[:space:]]*(->)?[[:space:]]*v[0-9]' | sed -E 's/^[[:space:]]*(->)?[[:space:]]*//' | cut -f1 -d' ' | sort -Vr)
             fi
 
             if [ -n "$VERSIONS" ]; then
@@ -74,7 +94,8 @@ get_web_info() {
     local NUM_LOCKS=${#LOCK_FILES[@]}
 
     if [ $NUM_LOCKS -eq 0 ]; then
-        printf "%b\n" "${YELLOW}${INFO} No lock files found. Please choose a package manager.${NC}" >&2
+        printf "\n"
+        printf "%b\n" "${YELLOW}${WARNING} No lock files found. Please choose a package manager.${NC}" >&2
         G_PACKAGE_MANAGER=$("$GUM" choose "pnpm" "npm" "yarn" --header "Select Package Manager:")
     elif [ $NUM_LOCKS -eq 1 ]; then
         G_PACKAGE_MANAGER=${LOCK_FILES[0]}

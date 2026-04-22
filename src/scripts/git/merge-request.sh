@@ -79,7 +79,7 @@ fi
 
 # --- 2. Bump version ---
 if [[ "$SKIP_VERSION" == "true" ]]; then
-    printf "%b\n" "${BLUE}${INFO}  Skipping version bump as requested.${NC}"
+    printf "%b\n" "${BLUE}${INFO} Skipping version bump as requested.${NC}"
 elif [ -f "package.json" ]; then
     printf "%b\n" "${BLUE}${HAMMER} Bumping ${INCREMENT_TYPE} version...${NC}"
     
@@ -92,7 +92,7 @@ fi
 printf "%b\n" "${BLUE}${ROCKET} Committing changes...${NC}"
 git add .
 if git diff --staged --quiet; then
-    printf "%b\n" "${YELLOW}${INFO}  No changes to commit.${NC}"
+    printf "%b\n" "${YELLOW}${INFO} No changes to commit.${NC}"
 else
     git commit -m "$COMMIT_MESSAGE"
 fi

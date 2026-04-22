@@ -20,11 +20,13 @@ printf "%b\n" "${BLUE}${INFO} Detecting environment...${NC}"
 get_web_info
 
 if [ -z "$G_PACKAGE_MANAGER" ]; then
+    printf "\n"
     printf "%b\n" "${RED}${ERROR} Failed to detect package manager.${NC}"
     exit 1
 fi
 
 # Step 2: Prepare and execute start command
+printf "\n"
 printf "%b\n" "${BLUE}${ROCKET} Starting project using ${BOLD}${G_PACKAGE_MANAGER}${NC}..."
 
 
