@@ -51,13 +51,13 @@ render_help() {
     local options="$4"
     local example="$5"
 
-    printf "%b\n" ""
-    printf "%b\n" "${BLUE}${INFO} ${BOLD}${title} Usage Guide:${NC}"
-    printf "%b\n" "${_INDENT}${usage}"
-    printf "%b\n" ""
-    printf "%b\n" "${YELLOW}${BOLD}Description:${NC}"
+    printf "\n"
+    printf "%b%s\n" "${BLUE}${INFO} ${BOLD}${title} Usage Guide:${NC}" ""
+    printf "%s%s\n" "${_INDENT}" "${usage}"
+    printf "\n"
+    printf "%b%s\n" "${YELLOW}${BOLD}Description:${NC}" ""
     printf "%b\n" "$description" | while IFS= read -r line; do
-        [ -n "$line" ] && printf "%b\n" "${_INDENT}${line}"
+        [ -n "$line" ] && printf "%s%s\n" "${_INDENT}" "${line}"
     done
     printf "%b\n" ""
     printf "%b\n" "${YELLOW}${BOLD}Options:${NC}"
@@ -67,21 +67,21 @@ render_help() {
                 # Clean whitespace and print with fixed width for column 1
                 col1_clean=$(echo "$col1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
                 col2_clean=$(echo "$col2" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-                printf "${_INDENT}${CYAN}%-22s${NC} %s\n" "$col1_clean" "$col2_clean"
+                printf "%b%-22s%b %s\n" "${_INDENT}${CYAN}" "$col1_clean" "${NC}" "$col2_clean"
             else
                 col1_clean=$(echo "$col1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-                [ -n "$col1_clean" ] && printf "%b\n" "${_INDENT}$col1_clean"
+                [ -n "$col1_clean" ] && printf "%s%s\n" "${_INDENT}" "$col1_clean"
             fi
         done
     else
         printf "%b\n" "$options" | while IFS= read -r line; do
-             [ -n "$line" ] && printf "%b\n" "${_INDENT}${line}"
+             [ -n "$line" ] && printf "%s%s\n" "${_INDENT}" "${line}"
         done
     fi
     printf "%b\n" ""
     printf "%b\n" "${YELLOW}${BOLD}Example:${NC}"
     printf "%b\n" "$example" | while IFS= read -r line; do
-        [ -n "$line" ] && printf "%b\n" "${_INDENT}${line}"
+        [ -n "$line" ] && printf "%s%s\n" "${_INDENT}" "${line}"
     done
     printf "%b\n" ""
 }
