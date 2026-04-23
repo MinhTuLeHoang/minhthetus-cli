@@ -77,6 +77,40 @@ if [[ -z "$COMMIT_MESSAGE" ]]; then
     COMMIT_MESSAGE="[bump version]"
 fi
 
+# --- 1.5. Sync with master and prepare MR content ---
+printf "%b\n" "${BLUE}${HOURGLASS} Syncing with master before workflow...${NC}"
+git fetch origin master
+
+# Check if there is anything to rebase (avoid unnecessary rebase)
+if ! git rebase origin/master; then
+    printf "%b\n" "${RED}${ERROR} Rebase conflict detected. Please resolve manually and try again.${NC}"
+    git rebase --abort
+    exit 1
+fi
+
+# MR/PR Formatting Logic
+JIRA_TICKET=$(echo "$CURRENT_BRANCH" | grep -oE "[A-Z]+-[0-9]+" | head -1) || JIRA_TICKET=""
+PREFIX=$(echo "$CURRENT_BRANCH" | grep -oE "^[^/]+/" | sed 's/\///') || PREFIX=""
+PRETTY_PREFIX=""
+if [[ -n "$PREFIX" ]]; then
+    PRETTY_PREFIX="$(tr '[:lower:]' '[:upper:]' <<< ${PREFIX:0:1})${PREFIX:1}/ "
+fi
+
+if [[ -n "$JIRA_TICKET" ]]; then
+    # Extract rest of branch name by removing prefix/ticket and replacing separators with space
+    REST_OF_BRANCH=$(echo "$CURRENT_BRANCH" | sed -E "s|^([^/]+/)?$JIRA_TICKET||; s|^[^/]+/||; s/^[-_]//; s/[-_]/ /g; s/  / /g")
+    MR_TITLE="Resolve $JIRA_TICKET \"$PRETTY_PREFIX$REST_OF_BRANCH\""
+    MR_TITLE=$(echo "$MR_TITLE" | sed 's/ " / "/') # Clean up space if any
+    CLOSES_TEXT="Closes $JIRA_TICKET"
+else
+    MR_TITLE="$COMMIT_MESSAGE"
+    CLOSES_TEXT=""
+fi
+
+# Generate commit list (diff between master and current branch)
+COMMIT_LIST=$(git log origin/master..HEAD --oneline --format="- %s")
+MR_DESCRIPTION=$(printf "%s\n\n%s" "$CLOSES_TEXT" "$COMMIT_LIST")
+
 # --- 2. Bump version ---
 if [[ "$SKIP_VERSION" == "true" ]]; then
     printf "%b\n" "${BLUE}${INFO} Skipping version bump as requested.${NC}"
@@ -89,6 +123,7 @@ else
 fi
 
 # --- 3. Stage, Commit, and Push ---
+printf "\n"
 printf "%b\n" "${BLUE}${ROCKET} Committing changes...${NC}"
 git add .
 if git diff --staged --quiet; then
@@ -112,14 +147,14 @@ SUCCESS=false
 # Case 1: GitHub
 if [[ "$REMOTE_URL" == *"github.com"* ]]; then
     if command -v gh &> /dev/null; then
-        gh pr create --base master --head "$CURRENT_BRANCH" --title "$COMMIT_MESSAGE" --body "Automatically created by minhthetus-cli"
+        gh pr create --base master --head "$CURRENT_BRANCH" --title "$MR_TITLE" --body "$MR_DESCRIPTION"
         SUCCESS=true
     fi
 
 # Case 2: GitLab (using push options)
 elif [[ "$REMOTE_URL" == *"gitlab"* ]]; then
     printf "%b\n" "${CYAN}${INFO} Utilizing GitLab push options for MR creation...${NC}"
-    if git push -o mr.create -o mr.target=master -o mr.title="$COMMIT_MESSAGE" -o mr.remove_source_branch origin "$CURRENT_BRANCH"; then
+    if git push -o mr.create -o mr.target=master -o mr.title="$MR_TITLE" -o mr.description="$MR_DESCRIPTION" -o mr.remove_source_branch origin "$CURRENT_BRANCH"; then
         SUCCESS=true
     fi
 
@@ -127,7 +162,7 @@ elif [[ "$REMOTE_URL" == *"gitlab"* ]]; then
 else
     printf "%b\n" "${CYAN}${INFO} Attempting to create PR via Agit (refs/for/master)...${NC}"
     # Agit requires a topic (-o topic). We use the current branch name.
-    if git push origin "HEAD:refs/for/master" -o topic="$CURRENT_BRANCH" -o title="$COMMIT_MESSAGE" -o description="Automatically created by minhthetus-cli"; then
+    if git push origin "HEAD:refs/for/master" -o topic="$CURRENT_BRANCH" -o title="$MR_TITLE" -o description="$MR_DESCRIPTION"; then
         SUCCESS=true
     else
         printf "%b\n" "${YELLOW}${WARNING} Agit push failed. This host might not support Agit.${NC}"
@@ -147,20 +182,20 @@ if [[ "$REMOTE_URL" == *"github.com"* ]]; then
     REPO_PATH=$(echo "$REMOTE_URL" | sed -E 's/.*github.com[:\/](.*)\.git/\1/')
     
     # URL Encode Title and Body for the manual link
-    TITLE_ENC=$(echo "$COMMIT_MESSAGE" | sed 's/ /%20/g; s/\[/%5B/g; s/\]/%5D/g')
-    BODY_ENC="Automatically%20created%20by%20minhthetus-cli"
+    TITLE_ENC=$(echo "$MR_TITLE" | sed 's/ /%20/g; s/\[/%5B/g; s/\]/%5D/g; s/"/%22/g')
+    BODY_ENC=$(echo "$MR_DESCRIPTION" | sed 's/ /%20/g; s/\[/%5B/g; s/\]/%5D/g; s/"/%22/g; s/$/%0A/g' | tr -d '\n')
     
-    printf "  https://github.com/$REPO_PATH/compare/master...$CURRENT_BRANCH?expand=1&quick_pull=1&title=$TITLE_ENC&body=$BODY_ENC\n"
+    printf "  %s\n" "https://github.com/$REPO_PATH/compare/master...$CURRENT_BRANCH?expand=1&quick_pull=1&title=$TITLE_ENC&body=$BODY_ENC"
 elif [[ "$REMOTE_URL" == *"gitlab"* ]]; then
     # Improved extraction for GitLab (handles subgroups correctly)
     REPO_PATH=$(echo "$REMOTE_URL" | sed -E 's/.*@//;s/http(s)?:\/\///;s/^[^\/:]+[\/:]//;s/\.git$//')
     DOMAIN=$(echo "$REMOTE_URL" | sed -E 's/.*@//;s/http(s)?:\/\///;s/[:\/].*//')
     
     # URL Encode Title and Description for the manual link
-    TITLE_ENC=$(echo "$COMMIT_MESSAGE" | sed 's/ /%20/g; s/\[/%5B/g; s/\]/%5D/g')
-    DESC_ENC="Automatically%20created%20by%20minhthetus-cli"
+    TITLE_ENC=$(echo "$MR_TITLE" | sed 's/ /%20/g; s/\[/%5B/g; s/\]/%5D/g; s/"/%22/g')
+    DESC_ENC=$(echo "$MR_DESCRIPTION" | sed 's/ /%20/g; s/\[/%5B/g; s/\]/%5D/g; s/"/%22/g; s/$/%0A/g' | tr -d '\n')
     
-    printf "  https://$DOMAIN/$REPO_PATH/-/merge_requests/new?merge_request[source_branch]=$CURRENT_BRANCH&merge_request[target_branch]=master&merge_request[title]=$TITLE_ENC&merge_request[description]=$DESC_ENC\n"
+    printf "  %s\n" "https://$DOMAIN/$REPO_PATH/-/merge_requests/new?merge_request[source_branch]=$CURRENT_BRANCH&merge_request[target_branch]=master&merge_request[title]=$TITLE_ENC&merge_request[description]=$DESC_ENC"
 elif [ "$SUCCESS" = false ]; then
     printf "  Please visit your git provider's web interface to open a PR/MR manually.\n"
 fi

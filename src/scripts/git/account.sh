@@ -174,7 +174,7 @@ else
             
             git config user.email "$SELECTED_EMAIL"
             git config user.name "$SELECTED_NAME"
-            printf "%b\n" "${CHECK} ${GREEN}Applied locally: $SELECTED_NAME <$SELECTED_EMAIL>${NC}"
+            printf "%bApplied locally: %s <%s>%b\n" "${CHECK} ${GREEN}" "$SELECTED_NAME" "$SELECTED_EMAIL" "${NC}"
         fi
     fi
 fi

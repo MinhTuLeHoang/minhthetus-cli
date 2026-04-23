@@ -31,66 +31,80 @@ printf "\n"
 git fetch origin dev
 git fetch origin staging
 
-DEV_HASH=$(git rev-parse dev)
-STAGING_HASH=$(git rev-parse staging)
+# Use origin hashes for detection to avoid local branch drift issues
+DEV_HASH=$(git rev-parse origin/dev 2>/dev/null || git rev-parse dev 2>/dev/null || echo "")
+STAGING_HASH=$(git rev-parse origin/staging 2>/dev/null || git rev-parse staging 2>/dev/null || echo "")
 
 printf "\n"
 printf "%b\n" "${INFO} dev hash: ${BLUE}$DEV_HASH${NC}"
 printf "%b\n" "${INFO} staging hash: ${BLUE}$STAGING_HASH${NC}"
 printf "\n"
 
-# Feature branch already contains dev/staging: dev/staging are ancestors of HEAD (e.g. linear ahead).
+# Check if feature branch contains dev and staging
+DEV_IS_ANCESTOR=false
+if [ -n "$DEV_HASH" ] && git merge-base --is-ancestor "$DEV_HASH" "$LATEST_COMMIT"; then
+    DEV_IS_ANCESTOR=true
+fi
+
+STAGING_IS_ANCESTOR=false
+if [ -n "$STAGING_HASH" ] && git merge-base --is-ancestor "$STAGING_HASH" "$LATEST_COMMIT"; then
+    STAGING_IS_ANCESTOR=true
+fi
+
+# Feature branch contains dev/staging if BOTH are ancestors.
+# This allows 'pulling' all new commits from feature into dev/staging.
 FEATURE_CONTAINS_DEV_STAGING=false
-if [ "$DEV_HASH" == "$STAGING_HASH" ] && git merge-base --is-ancestor "$DEV_HASH" "$LATEST_COMMIT"; then
+if [ "$DEV_IS_ANCESTOR" = true ] && [ "$STAGING_IS_ANCESTOR" = true ]; then
     FEATURE_CONTAINS_DEV_STAGING=true
 fi
 
-# Check for Case A (same node) vs Case B (else)
-if [ "$DEV_HASH" == "$STAGING_HASH" ]; then
-    printf "%b\n" "${TAG} ${GREEN}Detected Case A: dev and staging are at the same node.${NC}"
+# Prioritize Linear Sync (Case A Rebase) if both branches are ancestors
+if [ "$FEATURE_CONTAINS_DEV_STAGING" = true ]; then
+    printf "%b\n" "${TAG} ${GREEN}Detected Linear Case: Both dev and staging are ancestors of the current branch.${NC}"
+    printf "%b\n" "${TAG} ${GREEN}Syncing with rebase/FF (no cherry-pick needed).${NC}"
     printf "\n"
 
-    if [ "$FEATURE_CONTAINS_DEV_STAGING" = true ]; then
-        printf "%b\n" "${TAG} ${GREEN}Feature branch contains dev and staging — syncing with pull --rebase / rebase (no cherry-pick).${NC}"
+    # CASE A (rebase): checkout dev, pull --rebase, rebase onto feature, push; checkout staging, pull --rebase dev, push.
+    printf "%b\n" "${HOURGLASS} Checking out dev..."
+    git checkout dev
+
+    printf "%b\n" "${HOURGLASS} Pulling latest dev from origin (rebase)..."
+    git pull --rebase origin dev
+
+    printf "%b\n" "${HAMMER} Rebasing dev onto $ORIGINAL_BRANCH ($LATEST_COMMIT)..."
+    git rebase "$ORIGINAL_BRANCH" || {
+        printf "%b\n" "${ERROR} ${RED}Rebase onto $ORIGINAL_BRANCH failed. Aborting rebase.${NC}"
+        git rebase --abort 2>/dev/null || true
+        git checkout "$ORIGINAL_BRANCH"
         printf "\n"
+        printf "%b\n" "${INFO} FINAL STATUS:"
+        printf "%b\n" "dev: ${ERROR} Rebase failed"
+        printf "%b\n" "staging: ${INFO} Skipped"
+        exit 1
+    }
 
-        # CASE A (rebase): checkout dev, pull --rebase, rebase onto feature, push; checkout staging, pull --rebase dev, push.
-        printf "%b\n" "${HOURGLASS} Checking out dev..."
-        git checkout dev
+    git push origin dev --force
+    printf "%b\n" "${CHECK} ${GREEN}dev updated and pushed.${NC}"
+    printf "\n"
 
-        printf "%b\n" "${HOURGLASS} Pulling latest dev from origin (rebase)..."
-        git pull --rebase origin dev
+    printf "%b\n" "${HOURGLASS} Checking out staging..."
+    git checkout staging
 
-        printf "%b\n" "${HAMMER} Rebasing dev onto $ORIGINAL_BRANCH ($LATEST_COMMIT)..."
-        git rebase "$ORIGINAL_BRANCH" || {
-            printf "%b\n" "${ERROR} ${RED}Rebase onto $ORIGINAL_BRANCH failed. Aborting rebase.${NC}"
-            git rebase --abort 2>/dev/null || true
-            git checkout "$ORIGINAL_BRANCH"
-            printf "\n"
-            printf "%b\n" "${INFO} FINAL STATUS:"
-            printf "%b\n" "dev: ${ERROR} Rebase failed"
-            printf "%b\n" "staging: ${INFO} Skipped"
-            exit 1
-        }
+    printf "%b\n" "${HOURGLASS} Pulling dev into staging (rebase)..."
+    git pull --rebase origin dev
 
-        git push origin dev --force
-        printf "%b\n" "${CHECK} ${GREEN}dev updated and pushed.${NC}"
-        printf "\n"
+    git push origin staging --force
+    printf "%b\n" "${HAMMER} Sync dev to staging successfully"
+    printf "\n"
 
-        printf "%b\n" "${HOURGLASS} Checking out staging..."
-        git checkout staging
+    DEV_STATUS="${CHECK} Successfully rebased and pushed"
+    STAGING_STATUS="${CHECK} Successfully pulled from dev (rebase) and pushed"
 
-        printf "%b\n" "${HOURGLASS} Pulling dev into staging (rebase)..."
-        git pull --rebase origin dev
+elif [ "$DEV_HASH" == "$STAGING_HASH" ]; then
+    printf "%b\n" "${TAG} ${GREEN}Detected Case A: dev and staging are at the same node (not ancestors).${NC}"
+    printf "\n"
 
-        git push origin staging --force
-        printf "%b\n" "${HAMMER} Sync dev to staging successfully"
-        printf "\n"
-
-        DEV_STATUS="${CHECK} Successfully rebased and pushed"
-        STAGING_STATUS="${CHECK} Successfully pulled from dev (rebase) and pushed"
-    else
-        # CASE A (cherry-pick): checkout dev, cherry pick, push. checkout staging, pull dev, push.
+    # CASE A (cherry-pick): checkout dev, cherry pick, push. checkout staging, pull dev, push.
 
         # 1. Checkout dev
         printf "%b\n" "${HOURGLASS} Checking out dev..."
@@ -131,7 +145,6 @@ if [ "$DEV_HASH" == "$STAGING_HASH" ]; then
             printf "%b\n" "staging: $STAGING_STATUS"
             exit 1
         fi
-    fi
 else
     printf "%b\n" "${TAG} ${YELLOW}Detected Case B: dev and staging are at different nodes.${NC}"
     printf "\n"
