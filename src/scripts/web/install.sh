@@ -17,6 +17,10 @@ HELP_EXAMPLE="minhthetus-cli web install --force\nminhthetus-cli web install --c
 source "$GENERAL_SCRIPTS_DIR/print-help.sh" "$@"
 source "$GENERAL_SCRIPTS_DIR/get-web-info.sh"
 
+# Background: Track this repository silently
+minhthetus-cli repo-track "$(pwd)" --silent &> /dev/null &
+
+
 # Parse arguments
 FORCE=false
 CI_MODE=false
@@ -50,20 +54,20 @@ if [ "$FORCE" = true ]; then
     printf "%b\n" "${YELLOW}${WARNING} Force mode enabled. Cleaning up...${NC}"
     
     if [ -d "node_modules" ]; then
-        printf "%b\n" "${_INDENT:-  }${INFO} Removing node_modules...${NC}"
+        printf "%b\n" "${_INDENT}${INFO} Removing node_modules...${NC}"
         rm -rf node_modules
     fi
 
     # Remove lock files based on detected package manager (or all if we want to be thorough)
     case $G_PACKAGE_MANAGER in
         pnpm)
-            [ -f "pnpm-lock.yaml" ] && rm "pnpm-lock.yaml" && printf "%b\n" "${_INDENT:-  }${INFO} Removed pnpm-lock.yaml${NC}"
+            [ -f "pnpm-lock.yaml" ] && rm "pnpm-lock.yaml" && printf "%b\n" "${_INDENT}${INFO} Removed pnpm-lock.yaml${NC}"
             ;;
         npm)
-            [ -f "package-lock.json" ] && rm "package-lock.json" && printf "%b\n" "${_INDENT:-  }${INFO} Removed package-lock.json${NC}"
+            [ -f "package-lock.json" ] && rm "package-lock.json" && printf "%b\n" "${_INDENT}${INFO} Removed package-lock.json${NC}"
             ;;
         yarn)
-            [ -f "yarn.lock" ] && rm "yarn.lock" && printf "%b\n" "${_INDENT:-  }${INFO} Removed yarn.lock${NC}"
+            [ -f "yarn.lock" ] && rm "yarn.lock" && printf "%b\n" "${_INDENT}${INFO} Removed yarn.lock${NC}"
             ;;
     esac
 fi

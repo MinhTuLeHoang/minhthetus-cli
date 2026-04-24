@@ -15,6 +15,9 @@ HELP_EXAMPLE="minhthetus-cli web start --port 3000"
 source "$GENERAL_SCRIPTS_DIR/print-help.sh" "$@"
 source "$GENERAL_SCRIPTS_DIR/get-web-info.sh"
 
+# Background: Track this repository silently
+minhthetus-cli repo-track "$(pwd)" --silent &> /dev/null &
+
 # Step 1: Detect environment
 printf "%b\n" "${BLUE}${INFO} Detecting environment...${NC}"
 get_web_info

@@ -22,6 +22,11 @@ ROCKET="🚀"
 HAMMER="🔨"
 HOURGLASS="⏳"
 
+# Indentation
+[ -z "$HELP_TAB_SIZE" ] && HELP_TAB_SIZE=3
+HELP_INDENT=$(printf "%${HELP_TAB_SIZE}s" "")
+_INDENT="  "
+
 # Spinner function
 show_spinner() {
     local pid=$1
@@ -58,7 +63,7 @@ show_spinner() {
         local ms=$(((elapsed % 1000) / 100))
         local char="${spinstr[$((count % spin_count))]}"
         
-        printf "\r${_INDENT:-  }${msg} %b%s%b (${sec}.${ms}s)  " "${CYAN}" "$char" "${NC}"
+        printf "\r${_INDENT}${msg} %b%s%b (${sec}.${ms}s)  " "${CYAN}" "$char" "${NC}"
         sleep $delay
         count=$((count + 1))
     done
