@@ -13,10 +13,12 @@ Use this skill whenever you need to synchronize the documentation with the lates
     *   New command line flags or options.
     *   Changes in the execution flow or logic cases.
     *   Descriptions and help information.
+    *   **Configuration Logic**: Identify any new or modified logic that reads from or writes to the `~/.minhthetus-cli/` configuration directory.
 2.  **Locate Guides**: Documentation is stored in `guide/cli-functions/` following a directory structure that mirrors the scripts (e.g., `git/`, `web/`, `demo/`).
 3.  **Cross-Check & Update**:
     *   **Existing Files**: For each script, verify that its corresponding `.md` file accurately reflects the 'Usage', 'Options', and 'Flow' sections.
     *   **New Files**: If a script exists in `src/scripts/` but has no matching `.md` file in `guide/cli-functions/`, create one using the established format.
+    *   **Folder Config**: If the scripts' interaction with `~/.minhthetus-cli/` has changed (e.g., new config file, modified JSON structure, or updated shell functions), synchronize these changes in `guide/folder-structure-config.md`.
     *   **Deleted Files**: If a script has been removed, notify the user and suggest deleting the corresponding guide.
 4.  **Formatting Rules**:
     *   Use H1 for the command name.

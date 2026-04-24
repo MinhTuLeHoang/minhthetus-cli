@@ -7,9 +7,7 @@ const { spawn } = require('child_process');
 const omelette = require('omelette');
 
 const { showHelp } = require('./lib/help');
-const { setupCompletion } = require('./lib/setup-completion');
 const { installGum, GUM_PATH } = require('./lib/utils/install-gum');
-const { setupShellWrapper } = require('./lib/utils/setup-shell-wrapper');
 
 // Try to load embedded scripts. Fallback to empty if not generated yet.
 let embedded = { scripts: {}, generalScripts: {} };
@@ -109,44 +107,19 @@ completion.next(async () => {
   }
 
   if (fullArgs[0] === 'setup-completion') {
-    process.stderr.write('\n'); // Spacing top 1 line
-    setupCompletion(binName);
-    setupShellWrapper(binName);
-    process.stderr.write('\n'); // Spacing end 1 line
-    process.exit(0);
+    return await require('./lib/sub-command/setup-completion')(binName);
   }
 
+  if (fullArgs[0] === 'repo-track') {
+    return await require('./lib/sub-command/repo-track')(binName, fullArgs);
+  }
 
+  if (fullArgs[0] === 'repo-untrack') {
+    return await require('./lib/sub-command/repo-untrack')(binName, fullArgs);
+  }
 
   if (fullArgs[0] === 'uninstall') {
-    process.stderr.write('\n'); // Spacing top 1 line
-    const { uninstall } = require('./lib/utils/uninstall');
-    
-    // First, perform the internal cleanup (completions, shell wrappers, etc.)
-    await uninstall(binName);
-    
-    process.stderr.write(`\n✦ Attempting to remove the package globally...\n`);
-    const { execSync } = require('child_process');
-    
-    // Try pnpm first, then npm. Standard error is ignored to keep it clean if one fails.
-    try {
-      try {
-        process.stderr.write(`Running: pnpm uninstall -g ${binName}\n`);
-        execSync(`pnpm uninstall -g ${binName}`, { stdio: 'inherit' });
-      } catch (e) {
-        process.stderr.write(`Running: npm uninstall -g ${binName}\n`);
-        execSync(`npm uninstall -g ${binName}`, { stdio: 'inherit' });
-      }
-      process.stderr.write(`\n✅ Package removed successfully.\n`);
-    } catch (err) {
-      process.stderr.write(`\n⚠️ Could not automatically remove the package.\n`);
-      process.stderr.write(`Please run one of the following manually to finish:\n`);
-      process.stderr.write(`   pnpm uninstall -g ${binName}\n`);
-      process.stderr.write(`   npm uninstall -g ${binName}\n`);
-    }
-    
-    process.stderr.write('\n'); // Spacing end 1 line
-    process.exit(0);
+    return await require('./lib/sub-command/uninstall')(binName);
   }
 
   // Find the script in embedded scripts

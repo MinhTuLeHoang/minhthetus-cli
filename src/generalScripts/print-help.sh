@@ -29,13 +29,8 @@
 # -----------------------------------------------------------------------------
 
 # Configuration
-[ -z "$HELP_TAB_SIZE" ] && HELP_TAB_SIZE=3
-_INDENT=$(printf "%${HELP_TAB_SIZE}s" "")
-
-# Load constants (colors, icons, etc.)
 _GENERAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 [ -f "$_GENERAL_DIR/constants.sh" ] && source "$_GENERAL_DIR/constants.sh"
-
 
 # Function to render a formatted help message
 # Arguments:
@@ -53,11 +48,11 @@ render_help() {
 
     printf "\n"
     printf "%b%s\n" "${BLUE}${INFO} ${BOLD}${title} Usage Guide:${NC}" ""
-    printf "%s%s\n" "${_INDENT}" "${usage}"
+    printf "%s%s\n" "${HELP_INDENT}" "${usage}"
     printf "\n"
     printf "%b%s\n" "${YELLOW}${BOLD}Description:${NC}" ""
     printf "%b\n" "$description" | while IFS= read -r line; do
-        [ -n "$line" ] && printf "%s%s\n" "${_INDENT}" "${line}"
+        [ -n "$line" ] && printf "%s%s\n" "${HELP_INDENT}" "${line}"
     done
     printf "%b\n" ""
     printf "%b\n" "${YELLOW}${BOLD}Options:${NC}"
@@ -67,21 +62,21 @@ render_help() {
                 # Clean whitespace and print with fixed width for column 1
                 col1_clean=$(echo "$col1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
                 col2_clean=$(echo "$col2" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-                printf "%b%-22s%b %s\n" "${_INDENT}${CYAN}" "$col1_clean" "${NC}" "$col2_clean"
+                printf "%b%-22s%b %s\n" "${HELP_INDENT}${CYAN}" "$col1_clean" "${NC}" "$col2_clean"
             else
                 col1_clean=$(echo "$col1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-                [ -n "$col1_clean" ] && printf "%s%s\n" "${_INDENT}" "$col1_clean"
+                [ -n "$col1_clean" ] && printf "%s%s\n" "${HELP_INDENT}" "$col1_clean"
             fi
         done
     else
         printf "%b\n" "$options" | while IFS= read -r line; do
-             [ -n "$line" ] && printf "%s%s\n" "${_INDENT}" "${line}"
+             [ -n "$line" ] && printf "%s%s\n" "${HELP_INDENT}" "${line}"
         done
     fi
     printf "%b\n" ""
     printf "%b\n" "${YELLOW}${BOLD}Example:${NC}"
     printf "%b\n" "$example" | while IFS= read -r line; do
-        [ -n "$line" ] && printf "%s%s\n" "${_INDENT}" "${line}"
+        [ -n "$line" ] && printf "%s%s\n" "${HELP_INDENT}" "${line}"
     done
     printf "%b\n" ""
 }
