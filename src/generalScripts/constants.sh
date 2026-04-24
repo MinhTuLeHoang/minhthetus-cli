@@ -17,6 +17,7 @@ ERROR="❌"
 INFO="ℹ️ "
 WARNING="⚠️"
 TAG="🏷️"
+BULLET="•"
 
 ROCKET="🚀"
 HAMMER="🔨"

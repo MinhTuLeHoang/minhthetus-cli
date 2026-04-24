@@ -28,7 +28,7 @@ Use this skill when you are asked to add a new command, sub-command, or feature 
         *   `HELP_TITLE`: Title of the script.
         *   `HELP_USAGE`: Example usage string.
         *   `HELP_DESCRIPTION`: Detailed description (multi-line supported).
-        *   `HELP_OPTIONS`: Piped list of options (`--flag | Description`). Use `\n` for multi-line. **Do NOT** add `-h` or `--help`; it is added automatically.
+        *   `HELP_OPTIONS`: Piped list of options (`-f, --flag | Description`). Always list the short flag before the long flag, separated by a comma. Use `\n` for multi-line. **Do NOT** add `-h` or `--help`; it is added automatically.
         *   `HELP_EXAMPLE`: Concrete example command.
         *   `HELP_TAB_SIZE`: (Optional) Change left indentation (default: 3).
     *   Source the help system:
