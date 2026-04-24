@@ -1,0 +1,25 @@
+---
+name: update-docs
+description: Updates the CLI technical documentation in 'guide/cli-functions' to stay in sync with shell script changes in 'src/scripts'.
+---
+
+# Update CLI Documentation Skill
+
+Use this skill whenever you need to synchronize the documentation with the latest script implementations.
+
+## Instructions
+
+1.  **Survey Source Code**: Analyze all scripts in `src/scripts/`. Pay attention to:
+    *   New command line flags or options.
+    *   Changes in the execution flow or logic cases.
+    *   Descriptions and help information.
+2.  **Locate Guides**: Documentation is stored in `guide/cli-functions/` following a directory structure that mirrors the scripts (e.g., `git/`, `web/`, `demo/`).
+3.  **Cross-Check & Update**:
+    *   **Existing Files**: For each script, verify that its corresponding `.md` file accurately reflects the 'Usage', 'Options', and 'Flow' sections.
+    *   **New Files**: If a script exists in `src/scripts/` but has no matching `.md` file in `guide/cli-functions/`, create one using the established format.
+    *   **Deleted Files**: If a script has been removed, notify the user and suggest deleting the corresponding guide.
+4.  **Formatting Rules**:
+    *   Use H1 for the command name.
+    *   Use H2 for 'Usage', 'Options', and 'Flow'.
+    *   Ensure all file paths in documentation are absolute or relative to the project root as appropriate for the context.
+5.  **Output**: Provide a summary of the changes made or a diff of the updated documentation files.
