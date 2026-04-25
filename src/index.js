@@ -17,6 +17,12 @@ try {
   // During initial build, this might be missing
 }
 
+// Load remote registry
+let remoteRegistry = {};
+try {
+  remoteRegistry = require('./remote-registry.json');
+} catch (e) {}
+
 const binName = 'minhthetus-cli';
 
 /**
@@ -35,6 +41,25 @@ function extractScripts() {
     const fullPath = path.join(scriptsDir, relPath);
     fs.mkdirSync(path.dirname(fullPath), { recursive: true });
     fs.writeFileSync(fullPath, content, { mode: 0o755 });
+  }
+
+  // Copy remote scripts from disk if they exist (e.g. when running via npx download)
+  const remoteScriptsSource = path.join(__dirname, 'remote-scripts');
+  if (fs.existsSync(remoteScriptsSource)) {
+    const copyRecursive = (src, dest) => {
+      fs.readdirSync(src).forEach(item => {
+        const srcPath = path.join(src, item);
+        const destPath = path.join(dest, item);
+        if (fs.statSync(srcPath).isDirectory()) {
+          fs.mkdirSync(destPath, { recursive: true });
+          copyRecursive(srcPath, destPath);
+        } else {
+          fs.copyFileSync(srcPath, destPath);
+          fs.chmodSync(destPath, 0o755);
+        }
+      });
+    };
+    copyRecursive(remoteScriptsSource, scriptsDir);
   }
 
   for (const [relPath, content] of Object.entries(embedded.generalScripts)) {
@@ -68,7 +93,24 @@ completion.on('complete', (fragment, { reply, line }) => {
   const isNewWord = line.endsWith(' ');
   const args = parts.slice(1, isNewWord ? parts.length : parts.length - 1);
   
-  const scriptKeys = Object.keys(embedded.scripts);
+  const scriptKeys = new Set(Object.keys(embedded.scripts));
+  
+  // Add remote scripts from disk if any
+  const remoteScriptsSource = path.join(__dirname, 'remote-scripts');
+  if (fs.existsSync(remoteScriptsSource)) {
+    const getFiles = (dir, base) => {
+      fs.readdirSync(dir).forEach(file => {
+        const full = path.join(dir, file);
+        if (fs.statSync(full).isDirectory()) getFiles(full, base);
+        else if (file.endsWith('.sh')) scriptKeys.add(path.relative(base, full));
+      });
+    };
+    getFiles(remoteScriptsSource, remoteScriptsSource);
+  }
+
+  // Add remote registry keys
+  Object.keys(remoteRegistry).forEach(k => scriptKeys.add(k + '.sh'));
+
   let matches = [];
 
   if (args.length === 0) {
@@ -101,7 +143,7 @@ completion.next(async () => {
   const fullArgs = process.argv.slice(2);
 
   if (fullArgs.length === 0 || ['help', '--help', '-h'].includes(fullArgs[0])) {
-    await showHelp(binName, { embeddedScripts: embedded.scripts });
+    await showHelp(binName, { embeddedScripts: embedded.scripts, remoteRegistry });
     process.stderr.write('\n'); // Spacing end 1 line
     process.exit(0);
   }
@@ -128,11 +170,30 @@ completion.next(async () => {
 
   // Try to find the longest matching path
   for (let i = fullArgs.length; i > 0; i--) {
-    const potentialPath = fullArgs.slice(0, i).join('/') + '.sh';
+    const relPath = fullArgs.slice(0, i).join('/');
+    const potentialPath = relPath + '.sh';
+
+    // 1. Local/Embedded check
     if (embedded.scripts[potentialPath]) {
       matchedRelPath = potentialPath;
       consumedCount = i;
       break;
+    }
+
+    // 2. Remote Script on Disk check (e.g. running via npx)
+    if (fs.existsSync(path.join(__dirname, 'remote-scripts', potentialPath))) {
+      matchedRelPath = potentialPath;
+      consumedCount = i;
+      break;
+    }
+
+    // 3. Remote Registry check (fallback to NPX)
+    if (remoteRegistry[relPath]) {
+      const repoUrl = "github:MinhTuLeHoang/minhthetus-cli";
+      process.stderr.write(`\n\x1b[33m✦ Fetching remote command "${relPath}"...\x1b[0m\n`);
+      const npxProc = spawn('npx', ['-y', repoUrl, ...fullArgs], { stdio: 'inherit', env: process.env });
+      npxProc.on('exit', code => process.exit(code || 0));
+      return;
     }
   }
 
@@ -140,7 +201,7 @@ completion.next(async () => {
     process.stderr.write('\n'); // Spacing top 1 line
     console.error(`\x1b[31m\x1b[1mError:\x1b[0m command "${fullArgs.join(' ')}" not found.`);
     process.stderr.write('\n'); // Spacing between error and help
-    await showHelp(binName, { skipSplash: true, embeddedScripts: embedded.scripts });
+    await showHelp(binName, { skipSplash: true, embeddedScripts: embedded.scripts, remoteRegistry });
     process.stderr.write('\n'); // Spacing end 1 line
     process.exit(1);
   }
