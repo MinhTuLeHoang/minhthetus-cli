@@ -15,7 +15,7 @@ function gumStyle(text, options = {}) {
   }
 }
 
-async function showHelp(binName, { skipSplash = false, embeddedScripts = null } = {}) {
+async function showHelp(binName, { skipSplash = false, embeddedScripts = null, remoteRegistry = null } = {}) {
   resetLines();
   let splashPromise = null;
   if (!skipSplash) {
@@ -34,6 +34,7 @@ async function showHelp(binName, { skipSplash = false, embeddedScripts = null } 
     blue: "\x1b[34m",
     green: "\x1b[32m",
     cyan: "\x1b[36m",
+    magenta: "\x1b[35m",
     gray: "\x1b[90m"
   };
 
@@ -117,6 +118,53 @@ async function showHelp(binName, { skipSplash = false, embeddedScripts = null } 
     scriptsTree = getScriptsTree(scriptsDir);
   }
 
+  // Merge Remote Registry
+  if (remoteRegistry) {
+    for (const [relPath, info] of Object.entries(remoteRegistry)) {
+      const parts = relPath.split('/');
+      let current = scriptsTree;
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        if (i === parts.length - 1) {
+          if (!current[part]) {
+            current[part] = {
+              type: 'file',
+              description: (info.description || 'Remote command'),
+              isRemote: true
+            };
+          }
+        } else {
+          if (!current[part]) current[part] = { type: 'dir', children: {} };
+          current = current[part].children;
+        }
+      }
+    }
+  }
+
+  // Merge Remote Scripts on Disk (if any)
+  const remoteDir = path.join(__dirname, '..', 'remote-scripts');
+  if (fs.existsSync(remoteDir)) {
+    const addRemoteOnDisk = (dir, currentTree) => {
+      fs.readdirSync(dir).forEach(item => {
+        const full = path.join(dir, item);
+        if (fs.statSync(full).isDirectory()) {
+          if (!currentTree[item]) currentTree[item] = { type: 'dir', children: {} };
+          addRemoteOnDisk(full, currentTree[item].children);
+        } else if (item.endsWith('.sh')) {
+          const name = item.slice(0, -3);
+          const content = fs.readFileSync(full, 'utf8');
+          const match = content.match(/#\s*Description:\s*(.+)/i);
+          currentTree[name] = {
+            type: 'file',
+            description: (match ? match[1].trim() : 'Remote script'),
+            isRemote: true
+          };
+        }
+      });
+    };
+    addRemoteOnDisk(remoteDir, scriptsTree);
+  }
+
   function printTree(tree, indent = '', isLast = true) {
     const keys = Object.keys(tree).sort();
     
@@ -130,12 +178,15 @@ async function showHelp(binName, { skipSplash = false, embeddedScripts = null } 
         printTree(item.children, indent + (isLastItem ? '    ' : '│   '), true);
       } else {
         const description = item.description ? ` ${colors.gray}# ${item.description}${colors.reset}` : '';
-        log(`${indent}${connector}${colors.green}${key}${colors.reset}${description}`);
+        const color = item.isRemote ? colors.magenta : colors.green;
+        log(`${indent}${connector}${color}${key}${colors.reset}${description}`);
       }
     });
   }
 
   printTree(scriptsTree);
+  log();
+  log(`${colors.gray}Legend: ${colors.blue}Modules/${colors.reset}${colors.gray}, ${colors.green}Core Commands${colors.reset}${colors.gray}, ${colors.magenta}Remote Scripts (via npx)${colors.reset}`);
   log();
 
   // Built-in commands
