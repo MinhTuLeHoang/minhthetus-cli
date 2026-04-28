@@ -28,7 +28,7 @@ const binName = 'minhthetus-cli';
 /**
  * Recreates the script structure in a temporary directory to allow sourcing and execution.
  */
-function extractScripts() {
+function extractScripts(remotePath = null) {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), `${binName}-`));
   
   const scriptsDir = path.join(tempDir, 'scripts');
@@ -36,17 +36,17 @@ function extractScripts() {
   
   fs.mkdirSync(scriptsDir, { recursive: true });
   fs.mkdirSync(genDir, { recursive: true });
-
+ 
   for (const [relPath, content] of Object.entries(embedded.scripts)) {
     const fullPath = path.join(scriptsDir, relPath);
     fs.mkdirSync(path.dirname(fullPath), { recursive: true });
     fs.writeFileSync(fullPath, content, { mode: 0o755 });
   }
-
-  // Copy remote scripts from disk if they exist (e.g. when running via npx download)
-  const remoteScriptsSource = path.join(__dirname, 'remote-scripts');
-  if (fs.existsSync(remoteScriptsSource)) {
-    const copyRecursive = (src, dest) => {
+ 
+  // Copy remote scripts from disk if they were discovered
+  if (remotePath && fs.existsSync(remotePath)) {
+     // We only need the specific script and its siblings if any
+     const copyRecursive = (src, dest) => {
       fs.readdirSync(src).forEach(item => {
         const srcPath = path.join(src, item);
         const destPath = path.join(dest, item);
@@ -59,9 +59,9 @@ function extractScripts() {
         }
       });
     };
-    copyRecursive(remoteScriptsSource, scriptsDir);
+    copyRecursive(remotePath, scriptsDir);
   }
-
+ 
   for (const [relPath, content] of Object.entries(embedded.generalScripts)) {
     const fullPath = path.join(genDir, relPath);
     fs.mkdirSync(path.dirname(fullPath), { recursive: true });
@@ -167,6 +167,7 @@ completion.next(async () => {
   // Find the script in embedded scripts
   let matchedRelPath = null;
   let consumedCount = 0;
+  let isFromDisk = null;
 
   // Try to find the longest matching path
   for (let i = fullArgs.length; i > 0; i--) {
@@ -180,10 +181,19 @@ completion.next(async () => {
       break;
     }
 
-    // 2. Remote Script on Disk check (e.g. running via npx)
-    if (fs.existsSync(path.join(__dirname, 'remote-scripts', potentialPath))) {
+    // 2. Remote Script on Disk check (e.g. running via npx or local dev)
+    const localRemotePath = path.join(__dirname, 'remote-scripts', potentialPath);
+    const srcRemotePath = path.join(__dirname, '..', 'src', 'remote-scripts', potentialPath);
+    
+    if (fs.existsSync(localRemotePath)) {
       matchedRelPath = potentialPath;
       consumedCount = i;
+      isFromDisk = { path: localRemotePath, base: path.dirname(path.dirname(localRemotePath)) };
+      break;
+    } else if (fs.existsSync(srcRemotePath)) {
+      matchedRelPath = potentialPath;
+      consumedCount = i;
+      isFromDisk = { path: srcRemotePath, base: path.join(__dirname, '..', 'src', 'remote-scripts') };
       break;
     }
 
@@ -191,7 +201,8 @@ completion.next(async () => {
     if (remoteRegistry[relPath]) {
       const repoUrl = "github:MinhTuLeHoang/minhthetus-cli";
       process.stderr.write(`\n\x1b[33m✦ Fetching remote command "${relPath}"...\x1b[0m\n`);
-      const npxProc = spawn('npx', ['-y', repoUrl, ...fullArgs], { stdio: 'inherit', env: process.env });
+      // Use -p and explicitly name the binary to avoid npx finding the wrong execution target
+      const npxProc = spawn('npx', ['-y', '-p', repoUrl, binName, ...fullArgs], { stdio: 'inherit', env: process.env });
       npxProc.on('exit', code => process.exit(code || 0));
       return;
     }
@@ -209,7 +220,7 @@ completion.next(async () => {
   const scriptArgs = fullArgs.slice(consumedCount);
   
   // Extract scripts to temp dir for execution
-  const tempDir = extractScripts();
+  const tempDir = extractScripts(isFromDisk ? isFromDisk.base : null);
   const scriptPath = path.join(tempDir, 'scripts', matchedRelPath);
 
   const binDir = path.dirname(GUM_PATH);
