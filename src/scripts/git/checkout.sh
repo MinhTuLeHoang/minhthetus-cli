@@ -7,12 +7,13 @@ GENERAL_SCRIPTS_DIR="$SCRIPT_DIR/../../generalScripts"
 
 HELP_TITLE="Git Checkout (JIRA)"
 HELP_USAGE="minhthetus-cli git checkout [-j, --jira-ticket <id>]"
-HELP_DESCRIPTION="Checks out an existing branch matching a JIRA ID, or creates a new one following a standardized naming convention."
-HELP_OPTIONS="-j, --jira-ticket | JIRA ticket ID (e.g. PCFBANK-9404). If omitted, the script will prompt for it."
+HELP_DESCRIPTION="Checks out an existing branch matching a JIRA ID, or creates a new one following a standardized naming convention. Supports numeric shorthand (e.g. 9404 -> PCFBANK-9404)."
+HELP_OPTIONS="-j, --jira-ticket | JIRA ticket ID or number. If omitted, the script will prompt for it."
 HELP_EXAMPLE="minhthetus-cli git checkout --jira-ticket PCFBANK-9404\nminhthetus-cli git checkout"
 
 source "$GENERAL_SCRIPTS_DIR/print-help.sh" "$@"
 
+# Exit on error, undefined variables, and pipe failures
 set -euo pipefail
 
 # Parse arguments
@@ -31,7 +32,7 @@ done
 
 # Interactive JIRA prompt if not provided
 if [ -z "$JIRA_ID" ]; then
-    JIRA_ID=$(gum input --placeholder "Ex: PCFBANK-9404, type 'none' or empty to ignore")
+    JIRA_ID=$(gum input --placeholder "Ex: 9404 or PCFBANK-9404, type 'none' or empty to ignore")
     printf "\n"
 fi
 
@@ -39,6 +40,10 @@ fi
 if [[ "$JIRA_ID" == "none" ]] || [[ -z "$JIRA_ID" ]]; then
     JIRA_ID=""
 else
+    # Auto-prefix if input is only numbers
+    if [[ "$JIRA_ID" =~ ^[0-9]+$ ]]; then
+        JIRA_ID="PCFBANK-$JIRA_ID"
+    fi
     # Upper case JIRA ID for consistency
     JIRA_ID=$(echo "$JIRA_ID" | tr '[:lower:]' '[:upper:]')
 fi
@@ -92,6 +97,8 @@ printf "\n"
 TYPES=("feature" "hotfix" "test" "docs" "improve" "bugfix" "refactor")
 printf "%b\n" "${INFO} Select branch type:"
 TYPE=$(gum choose "${TYPES[@]}")
+# Clear the "Select branch type:" line and show result
+printf "\033[1A\033[K%b\n" "${INFO} Branch type: ${CYAN}${TYPE}${NC}"
 
 # 2. Input description
 printf "%b\n" "${INFO} Enter branch name/description:"
@@ -101,6 +108,8 @@ if [ -z "$DESC" ]; then
     printf "%b\n" "${ERROR} ${RED}Branch name/description cannot be empty.${NC}"
     exit 1
 fi
+# Clear the "Enter branch name/description:" line and show result
+printf "\033[1A\033[K%b\n" "${INFO} Description: ${CYAN}${DESC}${NC}"
 
 # 3. Format description
 # Lowercase, replace spaces with dashes, remove special characters
@@ -119,6 +128,14 @@ printf "%b\n" "${HOURGLASS} Creating and checking out: ${GREEN}${FINAL_NAME}${NC
 printf "\n"
 if git checkout -b "$FINAL_NAME"; then
     printf "%b\n" "${CHECK} ${GREEN}Successfully created and checked out ${FINAL_NAME}${NC}"
+    
+    # 6. Push to origin
+    printf "%b\n" "${HOURGLASS} Pushing to origin..."
+    if git push -u origin "$FINAL_NAME"; then
+        printf "%b\n" "${CHECK} ${GREEN}Successfully pushed to origin and set up tracking.${NC}"
+    else
+        printf "%b\n" "${WARNING} ${YELLOW}Failed to push to origin. You may need to push manually.${NC}"
+    fi
     printf "\n"
 else
     printf "%b\n" "${ERROR} ${RED}Failed to create branch.${NC}"
