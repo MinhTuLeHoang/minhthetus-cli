@@ -115,8 +115,35 @@ MR_DESCRIPTION=$(printf "%s\n\n%s" "$CLOSES_TEXT" "$COMMIT_LIST")
 if [[ "$SKIP_VERSION" == "true" ]]; then
     printf "%b\n" "${BLUE}${INFO} Skipping version bump as requested.${NC}"
 elif [ -f "package.json" ]; then
-    printf "%b\n" "${BLUE}${HAMMER} Bumping ${INCREMENT_TYPE} version...${NC}"
+    printf "%b\n" "${BLUE}${HAMMER} Bumping ${BOLD}${INCREMENT_TYPE}${NC}${BLUE} version...${NC}"
     
+    # Get current version and calculate next version for display
+    OLD_VERSION=$(node -p "require('./package.json').version" 2>/dev/null || grep '"version":' package.json | head -1 | awk -F: '{ print $2 }' | sed 's/[", ]//g')
+    NEW_VERSION=$(node -e "
+        const v = '$OLD_VERSION'.split('.');
+        const type = '$INCREMENT_TYPE';
+        if (type === 'major') v[0] = parseInt(v[0]) + 1, v[1] = 0, v[2] = 0;
+        else if (type === 'minor') v[1] = parseInt(v[1]) + 1, v[2] = 0;
+        else v[2] = parseInt(v[2]) + 1;
+        console.log(v.join('.'));
+    " 2>/dev/null || echo "next")
+
+    printf "%b\n" "${BLUE}${INFO} Version update: ${BOLD}${OLD_VERSION}${NC} -> ${GREEN}${BOLD}${NEW_VERSION}${NC}"
+
+    if command -v gum &> /dev/null; then
+        if ! gum confirm "Bumping ${BOLD}${INCREMENT_TYPE}${NC} version to ${BOLD}${NEW_VERSION}${NC}. Proceed?" --timeout=3s --default=true; then
+            printf "%b\n" "${YELLOW}${INFO} Version bump cancelled by user.${NC}"
+            exit 0
+        fi
+    else
+        # Fallback countdown
+        for i in {3..1}; do
+            printf "\r${YELLOW}${HOURGLASS} Auto-approving in $i seconds... (Ctrl+C to cancel)${NC}"
+            sleep 1
+        done
+        printf "\n"
+    fi
+
     npm version "$INCREMENT_TYPE" --no-git-tag-version
 else
     printf "%b\n" "${YELLOW}${WARNING} No package.json found. Skipping version bump.${NC}"
