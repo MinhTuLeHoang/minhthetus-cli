@@ -134,7 +134,11 @@ elif [ -f "package.json" ]; then
         # Use gum style for bold text in the confirmation message
         BOLD_TYPE=$(gum style --bold "$INCREMENT_TYPE")
         BOLD_VERSION=$(gum style --bold "$NEW_VERSION")
-        if ! gum confirm "Bumping $BOLD_TYPE version to $BOLD_VERSION. Proceed?" --timeout=3s --default=true; then
+        
+        # Display auto-approve guide
+        gum style --foreground 245 "(Auto-approving in 2 seconds...)"
+        
+        if ! gum confirm "Bumping $BOLD_TYPE version to $BOLD_VERSION. Proceed?" --timeout=2s --default="Yes"; then
             printf "%b\n" "${YELLOW}${INFO} Version bump cancelled by user.${NC}"
             exit 0
         fi

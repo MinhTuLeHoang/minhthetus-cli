@@ -4,8 +4,8 @@ const https = require('https');
 const { execSync } = require('child_process');
 const os = require('os');
 
-const GUM_VERSION = '0.14.5';
-const VENDOR_DIR = path.join(__dirname, '../../vendor');
+const GUM_VERSION = '0.17.0';
+const VENDOR_DIR = path.join(os.homedir(), '.minhthetus-cli', 'vendor');
 const BIN_DIR = path.join(VENDOR_DIR, 'bin');
 const GUM_PATH = path.join(BIN_DIR, 'gum');
 
