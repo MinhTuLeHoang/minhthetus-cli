@@ -1,6 +1,17 @@
 #!/bin/bash
 # Description: Test switching Node version via shell integration pipe
 
+# Source utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GENERAL_SCRIPTS_DIR="$SCRIPT_DIR/../../generalScripts"
+
+HELP_TITLE="Switch Node"
+HELP_USAGE="minhthetus-cli demo switch-node --node <version>"
+HELP_DESCRIPTION="Tests the shell integration pipe by requesting a Node.js version switch via nvm."
+HELP_OPTIONS="--node <v>   | The Node version to switch to (e.g., 20)"
+
+source "$GENERAL_SCRIPTS_DIR/print-help.sh" "$@"
+
 VERSION=""
 
 while [[ $# -gt 0 ]]; do
