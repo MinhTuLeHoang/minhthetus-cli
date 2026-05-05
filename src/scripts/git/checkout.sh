@@ -94,7 +94,7 @@ printf "%b\n" "${INFO} No existing branch found. Entering creation flow..."
 printf "\n"
 
 # 1. Select type
-TYPES=("feature" "hotfix" "test" "docs" "improve" "bugfix" "refactor")
+TYPES=("feature" "features" "hotfix" "test" "docs" "improve" "bugfix" "refactor")
 printf "%b\n" "${INFO} Select branch type:"
 TYPE=$(gum choose "${TYPES[@]}")
 # Clear the "Select branch type:" line and show result

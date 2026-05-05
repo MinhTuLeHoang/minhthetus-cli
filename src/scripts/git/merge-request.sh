@@ -136,9 +136,9 @@ elif [ -f "package.json" ]; then
         BOLD_VERSION=$(gum style --bold "$NEW_VERSION")
         
         # Display auto-approve guide
-        gum style --foreground 245 "(Auto-approving in 2 seconds...)"
+        gum style --foreground 245 "(Auto-approving in 3 seconds...)"
         
-        if ! gum confirm "Bumping $BOLD_TYPE version to $BOLD_VERSION. Proceed?" --timeout=2s --default="Yes"; then
+        if ! gum confirm "Bumping $BOLD_TYPE version to $BOLD_VERSION. Proceed?" --timeout=3s --default="Yes"; then
             printf "%b\n" "${YELLOW}${INFO} Version bump cancelled by user.${NC}"
             exit 0
         fi
