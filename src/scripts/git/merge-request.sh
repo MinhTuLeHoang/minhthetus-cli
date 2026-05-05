@@ -115,7 +115,7 @@ MR_DESCRIPTION=$(printf "%s\n\n%s" "$CLOSES_TEXT" "$COMMIT_LIST")
 if [[ "$SKIP_VERSION" == "true" ]]; then
     printf "%b\n" "${BLUE}${INFO} Skipping version bump as requested.${NC}"
 elif [ -f "package.json" ]; then
-    printf "%b\n" "${BLUE}${HAMMER} Bumping ${NC}${BOLD}${INCREMENT_TYPE}${NC}${BLUE} version...${NC}"
+    printf "%b\n" "${BLUE}${HAMMER} Bumping ${BOLD}${INCREMENT_TYPE}${NC}${BLUE} version...${NC}"
     
     # Get current version and calculate next version for display
     OLD_VERSION=$(node -p "require('./package.json').version" 2>/dev/null || grep '"version":' package.json | head -1 | awk -F: '{ print $2 }' | sed 's/[", ]//g')
@@ -131,7 +131,10 @@ elif [ -f "package.json" ]; then
     printf "%b\n" "${BLUE}${INFO} Version update: ${BOLD}${OLD_VERSION}${NC} -> ${GREEN}${BOLD}${NEW_VERSION}${NC}"
 
     if command -v gum &> /dev/null; then
-        if ! gum confirm "Bumping ${BOLD}${INCREMENT_TYPE}${NC} version to ${BOLD}${NEW_VERSION}${NC}. Proceed?" --timeout=3s --default=true; then
+        # Use gum style for bold text in the confirmation message
+        BOLD_TYPE=$(gum style --bold "$INCREMENT_TYPE")
+        BOLD_VERSION=$(gum style --bold "$NEW_VERSION")
+        if ! gum confirm "Bumping $BOLD_TYPE version to $BOLD_VERSION. Proceed?" --timeout=3s --default=true; then
             printf "%b\n" "${YELLOW}${INFO} Version bump cancelled by user.${NC}"
             exit 0
         fi
