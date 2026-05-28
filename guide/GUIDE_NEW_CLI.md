@@ -1,86 +1,102 @@
-# Guide: Adding New CLI Features
+# Guide: Adding New CLI Features (Go Version)
 
-This guide explains how to add new commands and features to the `minhthetus-cli` tool.
+This guide explains how to add new commands and features to the native Go implementation of `minhthetus-cli`.
 
-## 1. Structure of a Command
+## 1. Native Go Commands (Recommended)
 
-Commands are implemented as shell scripts within the `src/scripts` directory. The CLI automatically maps the command name to the corresponding script.
+New features should ideally be implemented natively in Go to leverage the performance and type safety of the new architecture.
 
-- A file at `src/scripts/my-command.sh` becomes `minhthetus-cli my-command`.
-- A file at `src/scripts/dev/logs.sh` becomes `minhthetus-cli dev logs`.
+### Step 1: Generate or Create the command
+New commands should be placed in the appropriate module folder under `cmd/` (e.g., `cmd/git/`, `cmd/web/`).
 
-### Essential: Script Description
+**Example: Adding a new subcommand to `git`**
 
-Every script **MUST** include a description line. This line is parsed by the `help` command to display information about what your script does. 
+1. Create a new file `cmd/git/my-subcommand.go`.
+2. Use the `git` package name.
+3. Export the command variable so it can be registered.
 
-Add it near the top of your `.sh` file like this:
+```go
+package git
 
-```bash
-#!/bin/bash
-# Description: This is a short summary of what this command does.
+import (
+	"fmt"
+	"github.com/spf13/cobra"
+)
+
+// MySubcommandCmd represents the my-subcommand command
+var MySubcommandCmd = &cobra.Command{
+	Use:   "my-subcommand",
+	Short: "A brief description of your command",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("my-subcommand called")
+	},
+}
 ```
 
-If this line is missing, the command will still work, but the help menu will show an empty description.
+### Step 2: Register the command
+Attach the subcommand to its parent in the module's `init()` function (e.g., in `cmd/git/git.go`):
 
----
+```go
+// cmd/git/git.go
+func init() {
+	Cmd.AddCommand(CheckoutCmd)
+	Cmd.AddCommand(MergeRequestCmd)
+	Cmd.AddCommand(MySubcommandCmd) // Add your new command here
+}
+```
 
-## 2. N-Level Subfolder Mapping
+After rebuilding, you can run the new command via:
+```bash
+go build -o minhthetus-cli main.go
+./minhthetus-cli git my-subcommand
+```
 
-The CLI supports arbitrary nesting of subfolders within `src/scripts`. Each folder name becomes a part of the command structure.
+### Step 3: Implement logic
+Use the Charmbracelet stack for any interactive elements:
+- **internal/ui/confirm.go**: For yes/no prompts.
+- **internal/ui/select.go**: For filtering/selecting from a list.
+- **internal/ui/input.go**: For text input.
+- **internal/ui/spinner.go**: For loading states.
 
-### Example: Nested subfolders
-If you want to organize commands under multiple categories:
+## 2. Legacy Script Bridge (Fast Migration)
 
-1. Create the directory structure:
-   `src/scripts/cloud/aws/ec2/start.sh`
+If you have an existing shell script that is too complex to port immediately, you can "bridge" it by creating a Go command that executes the script.
 
-2. Add the description to `start.sh`:
-   ```bash
-   #!/bin/bash
-   # Description: Start an EC2 instance.
-   ```
+### Example: Bridging a script
+1. Create a new command: `cobra-cli add my-feature`.
+2. Update `cmd/my_feature.go`:
 
-3. Call the command:
-   ```bash
-   minhthetus-cli cloud aws ec2 start --instance-id i-12345
-   ```
+```go
+var myFeatureCmd = &cobra.Command{
+    Use:   "my-feature",
+    Short: "Bridge to legacy script",
+    Run: func(cmd *cobra.Command, args []string) {
+        scriptPath := filepath.Join("src", "scripts", "my-feature.sh")
+        execCmd := exec.Command("bash", scriptPath)
+        execCmd.Stdout = os.Stdout
+        execCmd.Stderr = os.Stderr
+        execCmd.Run()
+    },
+}
+```
 
-### How it Works:
-- Arguments are consumed sequentially to navigate folders.
-- Once a `.sh` file matching the next argument is found, that script is executed with any remaining arguments.
-- Tab completion automatically picks up these subfolders, making it easy for users to discover nested commands.
+## 3. Designing Interactive UIs
 
----
+The Go version uses the **Bubble Tea** framework. Instead of calling `gum`, use the pre-built components in the `internal/ui` package.
 
-## 3. Step-by-Step: Adding a New Command
+### Confirmation with Timeout
+```go
+confirmed, _ := ui.Confirm("Proceed with deploy?", 5*time.Second, true)
+```
 
-1.  **Choose a Category**: Decide where the script should live (directly in `src/scripts` or in a subfolder).
-2.  **Create the File**: Create a `.sh` file with a descriptive name (e.g., `src/scripts/my-feature.sh`).
-3.  **Add the Required Header**:
-    ```bash
-    #!/bin/bash
-    # Description: My new awesome feature.
-    ```
-4.  **Implement Help & Logic**: Every command script should support a standardized help message.
-    - Define `HELP_*` variables.
-    - Source `print-help.sh`.
-    - **Note:** You do **NOT** need to source `constants.sh`. It is automatically sourced when you include `print-help.sh`.
+### Filtering Selection
+```go
+choice, _ := ui.Choose("Select environment:", []string{"dev", "staging", "prod"})
+```
 
-    ```bash
-    # 1. Define help metadata
-    HELP_TITLE="My Feature"
-    HELP_USAGE="minhthetus-cli my-feature [options]"
-    HELP_DESCRIPTION="Explanatory text about what this does."
-    HELP_OPTIONS="--opt | Description"
-    HELP_EXAMPLE="minhthetus-cli my-feature --opt"
+## 4. Rebuilding
+After making changes to the Go code, you must rebuild the binary:
 
-    # 2. Source the help system (this also provides colors/icons like ${GREEN}, ${CHECK}, etc.)
-    source "$(dirname "$0")/../generalScripts/print-help.sh" "$@"
-
-    # 3. Implement your logic
-    printf "%b\n" "${GREEN}${CHECK} Success!${NC}"
-    ```
-5.  **Test**:
-    - Run `minhthetus-cli help` to verify the description appears.
-    - Run your command: `minhthetus-cli my-feature`.
-    - Try tab completion: `minhthetus-cli my<TAB>`.
+```bash
+go build -o minhthetus-cli main.go
+```
