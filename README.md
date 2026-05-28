@@ -1,32 +1,51 @@
 # minhthetus-cli
 
-A professional, globally accessible Node.js CLI tool that acts as a powerful dispatcher for custom shell scripts. 
+A professional, high-performance CLI tool designed for automation and developer productivity. 
+
+> [!IMPORTANT]
+> **We've migrated!** The CLI has transitioned from a Node.js wrapper to a native **Go-compiled binary** for near-zero latency and zero-dependency distribution.
 
 ## 🚀 Key Features
 
-- **Automated Mapping**: Subfolders and shell scripts within the `src/scripts` directory are automatically mapped to CLI commands.
-- **N-Level Nesting**: Supports arbitrary nesting of directories, enabling multi-level commands (e.g., `minhthetus-cli cloud aws start-ec2`).
-- **Professional Help System**: Automatically generates usage instructions and extracts command descriptions from script headers.
-- **Tab Completion**: Built-in support for shell tab completion using `omelette`.
+- **Native Performance**: Built with Go for "instant" startup times (<10ms).
+- **Stunning TUI**: Rich interactive UI powered by the Charmbracelet ecosystem (`Bubble Tea`, `Lipgloss`).
+- **N-Level Nesting**: Supports arbitrary nesting of commands (e.g., `minhthetus-cli git checkout`).
+- **Professional Help System**: Automatically generated documentation and usage guides for every command.
+- **Single Binary**: Zero dependencies—just download and run.
+- **Cross-Platform**: Full support for macOS (Intel/M1), Linux, and Windows.
 
 ## 📖 Guides
 
 To get started or contribute, please refer to the following documentation:
 
+- [**Migrating to the Go CLI**](guide/MIGRATION_GO.md) - **Required reading for existing users** of the legacy Node.js version.
 - [First-Time Local Setup](guide/GUIDE_START_LOCAL.md) - Onboarding instructions to get the CLI running on your machine.
-- [Adding New CLI Features](guide/GUIDE_NEW_CLI.md) - Best practices and instructions for creating new commands and organizing scripts.
+- [Adding New CLI Features](guide/GUIDE_NEW_CLI.md) - Best practices for creating new commands.
 
 ---
 
-## Quick Usage Examples
+## ⚡ Quick Start
 
 ```bash
-# List all available commands
-minhthetus-cli help
+# Install via Homebrew
+brew install MinhTuLeHoang/tap/minhthetus-cli
 
-# Execute a greeting script
-minhthetus-cli hello --name "Your Name"
+# Verify installation
+minhthetus-cli version
 
-# Install tab completion for your shell
-minhthetus-cli setup-completion
+# Shell completion is setup automatically on first run!
+# (Or manually via: minhthetus-cli setup-completion)
+```
+
+## 🛠 Usage Examples
+
+```bash
+# Interactive Git checkout (JIRA integrated)
+minhthetus-cli git checkout
+
+# Run a version bump for merge requests
+minhthetus-cli git merge-request
+
+# Clean up local logs
+minhthetus-cli sys clean-log
 ```

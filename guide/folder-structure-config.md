@@ -73,8 +73,7 @@ This hidden directory is automatically created in your home folder when you firs
 
 ## Technical Details
 
-- **Creation**: The directory and its scripts are primarily managed by internal utility modules:
-  - `src/lib/utils/setup-shell-wrapper.js`: For the shell wrapper.
-  - `src/lib/setup-completion.js`: For the autocompletion script.
-  - `src/scripts/git/account.sh`: For the Git identity storage.
-- **Permissions**: Configuration files like `git-accounts.json` are often set with restricted permissions to protect your identity information.
+- **Creation**: The directory and its scripts are primarily managed by the Go implementation:
+  - **internal/ui/setup-completion.go**: Manages shell completion.
+  - **internal/git/**: Handles Git account and repository tracking logic.
+- **Permissions**: Configuration files are stored with restricted permissions to protect sensitive information.
