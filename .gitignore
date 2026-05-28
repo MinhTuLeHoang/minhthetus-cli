@@ -41,3 +41,10 @@ pnpm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Go build artifacts
+/minhthetus-cli
+/minhthetus-cli.exe
+/minhthetus-cli.test
+*.test
+*.out

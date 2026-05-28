@@ -12,8 +12,8 @@ var uninstallCmd = &cobra.Command{
 	Short: "Completely remove the CLI and all integrations",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("⏳ Preparing uninstallation...")
-		fmt.Println("⚠️ This feature is still being ported to Go.")
-		fmt.Println("👉 Please use 'npm uninstall -g minhthetus-cli' for the legacy version.")
+		fmt.Println("👉 To completely uninstall the Go version of minhthetus-cli, run:")
+		fmt.Println("   sudo rm /usr/local/bin/minhthetus-cli")
 	},
 }
 
