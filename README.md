@@ -33,6 +33,13 @@ brew install MinhTuLeHoang/minhthetus-cli/minhthetus-cli
 ```
 
 ### Option 2: Install via Go (Compiling directly)
+
+> [!IMPORTANT]
+> **Pre-requisite:** Ensure Go's binary directory (`~/go/bin`) is in your shell's `PATH`. If you haven't set this up, run:
+> ```bash
+> echo 'export PATH=$PATH:~/go/bin' >> ~/.zshrc && source ~/.zshrc
+> ```
+
 ```bash
 # Download and install via Go's toolchain (Go 1.21+ required)
 go install github.com/MinhTuLeHoang/minhthetus-cli@latest
