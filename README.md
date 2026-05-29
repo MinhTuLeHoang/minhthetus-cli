@@ -29,7 +29,7 @@ To get started or contribute, please refer to the following documentation:
 ### Option 1: Install via Homebrew (Recommended)
 ```bash
 # Install directly using Homebrew shorthand (automatically taps and installs)
-brew install MinhTuLeHoang/minhthetus-cli/minhthetus-cli
+brew install MinhTuLeHoang/tap/minhthetus-cli
 ```
 
 ### Option 2: Install via Go (Compiling directly)
