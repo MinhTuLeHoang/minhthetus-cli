@@ -82,7 +82,7 @@ func (m confirmModel) View() string {
 			remaining)))
 	}
 	
-	return s + "\n"
+	return s
 }
 
 // Confirm asks the user for confirmation with optional timeout and auto-approve.

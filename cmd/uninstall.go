@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/MinhTuLeHoang/minhthetus-cli/internal/ui"
@@ -39,6 +40,51 @@ func runBrewUninstall() error {
 	return brewCmd.Run()
 }
 
+// cleanupShellConfig automatically removes all autocomplete integration lines from zshrc and bashrc
+func cleanupShellConfig() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+
+	rcFiles := []string{
+		filepath.Join(home, ".zshrc"),
+		filepath.Join(home, ".bashrc"),
+	}
+
+	for _, rcPath := range rcFiles {
+		if _, err := os.Stat(rcPath); os.IsNotExist(err) {
+			continue
+		}
+
+		data, err := os.ReadFile(rcPath)
+		if err != nil {
+			continue
+		}
+
+		lines := strings.Split(string(data), "\n")
+		var newLines []string
+		removed := false
+
+		for _, line := range lines {
+			// Skip any lines containing "minhthetus-cli" to remove autocomplete hooks
+			if strings.Contains(line, "minhthetus-cli") {
+				removed = true
+				continue
+			}
+			newLines = append(newLines, line)
+		}
+
+		if removed {
+			// Write the cleaned shell config back
+			err = os.WriteFile(rcPath, []byte(strings.Join(newLines, "\n")), 0644)
+			if err == nil {
+				fmt.Printf("   - Cleaned up shell completion references in '%s'\n", filepath.Base(rcPath))
+			}
+		}
+	}
+}
+
 // uninstallCmd represents the uninstall command
 var uninstallCmd = &cobra.Command{
 	Use:   "uninstall",
@@ -61,9 +107,10 @@ var uninstallCmd = &cobra.Command{
 			return
 		}
 
-		// 3. Perform custom cleanup (Placeholders for logs, caches, autocomplete)
+		// 3. Perform custom cleanup (Removing logs, caches, autocomplete)
 		fmt.Println("🧹 Performing cleanup...")
 		fmt.Println("   - Removing temporary caches...")
+		cleanupShellConfig()
 
 		// 4. Determine installation method and proceed
 		method := detectInstallMethod(exePath)
@@ -89,6 +136,8 @@ var uninstallCmd = &cobra.Command{
 		}
 
 		fmt.Println("✅ Successfully uninstalled minhthetus-cli! Goodbye!")
+		fmt.Println("\n👉 To apply all changes and refresh your active shell, please run:")
+		fmt.Println("   source ~/.zshrc")
 	},
 }
 
