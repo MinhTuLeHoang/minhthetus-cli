@@ -3,14 +3,12 @@ package cmd
 import (
 	"fmt"
 	"runtime/debug"
-
-	"github.com/spf13/cobra"
 )
 
 var (
 	// Default/Fallback version info injected at build time (e.g. for Homebrew or manual build)
 	Version   = "1.0.0"
-	BuildDate = "2026-05-28"
+	BuildDate = "2026-05-29"
 )
 
 // getVersionString resolves the installation version dynamically from Go runtime metadata, falling back to build variables
@@ -23,15 +21,31 @@ func getVersionString() string {
 	return Version
 }
 
-// versionCmd represents the version command
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Print the version number of minhthetus-cli",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("minhthetus-cli %s (%s)\n", getVersionString(), BuildDate)
-	},
+// getBuildDate resolves the exact Git commit date dynamically from Go build metadata, falling back to build variables
+func getBuildDate() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.time" {
+				// vcs.time format: 2026-05-29T10:00:00Z -> extract first 10 characters (YYYY-MM-DD)
+				if len(setting.Value) >= 10 {
+					return setting.Value[:10]
+				}
+				return setting.Value
+			}
+		}
+	}
+	return BuildDate
 }
 
 func init() {
-	rootCmd.AddCommand(versionCmd)
+	// Set the global version flag on the root command
+	rootCmd.Version = getVersionString()
+
+	// Build the dynamic version template string featuring the resolved commit/release date
+	versionTemplate := fmt.Sprintf(`{{.Name}} version {{.Version}} (%s)
+https://github.com/MinhTuLeHoang/minhthetus-cli/releases/tag/{{.Version}}
+`, getBuildDate())
+
+	// Apply the customized template to Cobra's version formatting
+	rootCmd.SetVersionTemplate(versionTemplate)
 }
