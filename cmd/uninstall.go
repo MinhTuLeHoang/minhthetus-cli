@@ -55,7 +55,8 @@ var uninstallCmd = &cobra.Command{
 
 		// 2. Ask user for confirmation
 		confirmMsg := fmt.Sprintf("Are you sure you want to completely uninstall minhthetus-cli (running from '%s')?", exePath)
-		if !ui.GumConfirm(confirmMsg) {
+		confirmed, err := ui.Confirm(confirmMsg, 0, false)
+		if err != nil || !confirmed {
 			fmt.Println("❌ Uninstallation cancelled.")
 			return
 		}
