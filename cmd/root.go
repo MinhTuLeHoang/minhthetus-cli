@@ -58,7 +58,6 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.Version = getVersionString()
 	// Global flags can be defined here.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
