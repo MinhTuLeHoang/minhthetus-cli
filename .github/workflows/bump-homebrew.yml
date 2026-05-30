@@ -9,16 +9,41 @@ jobs:
   homebrew:
     runs-on: ubuntu-latest
     steps:
-      - name: Bump Formula
-        uses: dawidd6/action-homebrew-bump-formula@v3
+      - name: Checkout minhthetus-cli
+        uses: actions/checkout@v4
+
+      - name: Calculate SHA256
+        id: sha
+        run: |
+          TAG_NAME=${{ github.ref_name }}
+          # Download tarball of the current tag
+          curl -sL "https://github.com/MinhTuLeHoang/minhthetus-cli/archive/refs/tags/${TAG_NAME}.tar.gz" -o release.tar.gz
+          SHA_VAL=$(shasum -a 256 release.tar.gz | awk '{print $1}')
+          echo "sha=${SHA_VAL}" >> $GITHUB_OUTPUT
+          echo "version=${TAG_NAME#v}" >> $GITHUB_OUTPUT # Remove leading 'v'
+
+      - name: Checkout Homebrew Tap
+        uses: actions/checkout@v4
         with:
-          # Required: Personal Access Token with repo scope for homebrew-tap
+          repository: MinhTuLeHoang/homebrew-tap
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          # Required: Name of the formula to bump
-          formula: minhthetus-cli
-          # Optional: Name of the repository to bump (user/repo or user/homebrew-repo)
-          tap: MinhTuLeHoang/homebrew-tap
-          # Optional: Tag name (defaults to the pushed tag)
-          tag: ${{ github.ref_name }}
-          # Optional: Git commit message
-          commit_message: "chore(deps): bump minhthetus-cli to {{version}}"
+          path: homebrew-tap
+
+      - name: Update Formula
+        run: |
+          VERSION=${{ steps.sha.outputs.version }}
+          SHA=${{ steps.sha.outputs.sha }}
+          FORMULA_FILE="homebrew-tap/Formula/minhthetus-cli.rb"
+          
+          # Replace url and sha256 in the Ruby file
+          sed -i "s|url .*|url \"https://github.com/MinhTuLeHoang/minhthetus-cli/archive/refs/tags/v${VERSION}.tar.gz\"|g" $FORMULA_FILE
+          sed -i "s|sha256 .*|sha256 \"${SHA}\"|g" $FORMULA_FILE
+
+      - name: Commit and Push directly
+        run: |
+          cd homebrew-tap
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/minhthetus-cli.rb
+          git commit -m "chore(deps): bump minhthetus-cli to ${{ steps.sha.outputs.version }}"
+          git push origin main
