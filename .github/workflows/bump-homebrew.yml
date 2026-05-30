@@ -1,0 +1,24 @@
+name: Bump Homebrew Formula
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  homebrew:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bump Formula
+        uses: dawidd6/action-homebrew-bump-formula@v3
+        with:
+          # Required: Personal Access Token with repo scope for homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          # Required: Name of the formula to bump
+          formula: minhthetus-cli
+          # Optional: Name of the repository to bump (user/repo or user/homebrew-repo)
+          tap: MinhTuLeHoang/homebrew-tap
+          # Optional: Tag name (defaults to the pushed tag)
+          tag: ${{ github.ref_name }}
+          # Optional: Git commit message
+          commit_message: "chore(deps): bump minhthetus-cli to {{version}}"
