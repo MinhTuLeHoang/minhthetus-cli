@@ -1,13 +1,15 @@
-package demo
+//go:build dev
+
+package debug
 
 import (
 	"github.com/spf13/cobra"
 )
 
-// Cmd represents the demo command
+// Cmd represents the debug command
 var Cmd = &cobra.Command{
-	Use:   "demo",
-	Short: "Demonstrations of CLI capabilities",
+	Use:   "debug",
+	Short: "Developer debug utilities",
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},

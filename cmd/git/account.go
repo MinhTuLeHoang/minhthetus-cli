@@ -1,18 +1,17 @@
 package git
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 
+	"github.com/MinhTuLeHoang/minhthetus-cli/internal/config"
+	"github.com/MinhTuLeHoang/minhthetus-cli/internal/git"
 	"github.com/MinhTuLeHoang/minhthetus-cli/internal/ui"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 )
 
-type Account struct {
+type AccountModel struct {
 	Title string `json:"title"`
 	Name  string `json:"name"`
 	Email string `json:"email"`
@@ -20,8 +19,6 @@ type Account struct {
 
 var (
 	manageMode bool
-	configDir  = filepath.Join(os.Getenv("HOME"), ".minhthetus-cli")
-	configFile = filepath.Join(configDir, "git-accounts.json")
 )
 
 var AccountCmd = &cobra.Command{
@@ -34,11 +31,10 @@ minhthetus-cli git account`,
 		"title": "Git Account Manager",
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		ensureConfig()
 
 		if manageMode {
 			for {
-				ui.ClearScreen()
+				// ui.ClearScreen()
 				detectIdentity()
 				listAccounts()
 
@@ -67,22 +63,40 @@ minhthetus-cli git account`,
 			if len(accounts) == 0 {
 				createNewAccount()
 			} else {
+				maxTitle := 0
+				maxName := 0
+				maxEmailCol := 0
+				for _, acc := range accounts {
+					if len(acc.Title) > maxTitle {
+						maxTitle = len(acc.Title)
+					}
+					if len(acc.Name) > maxName {
+						maxName = len(acc.Name)
+					}
+					emailColLen := len(acc.Email) + 2
+					if emailColLen > maxEmailCol {
+						maxEmailCol = emailColLen
+					}
+				}
+
 				var options []string
 				for _, acc := range accounts {
-					options = append(options, fmt.Sprintf("%s ( %s <%s> )", acc.Title, acc.Name, acc.Email))
+					emailCol := fmt.Sprintf("<%s>", acc.Email)
+					options = append(options, fmt.Sprintf("%-*s ( %-*s  %-*s )", maxTitle, acc.Title, maxName, acc.Name, maxEmailCol, emailCol))
 				}
 				addOpt := "➕ Add New Account"
 				quitOpt := "🚪 Quit"
 				options = append(options, addOpt, quitOpt)
 
 				choice := ui.GumFilter(options, "Select identity to apply...")
-				if choice == "" || choice == quitOpt {
+				switch choice {
+				case "", quitOpt:
 					return
-				} else if choice == addOpt {
+				case addOpt:
 					createNewAccount()
-				} else {
-					title := strings.Split(choice, " (")[0]
-					var selected Account
+				default:
+					title := strings.TrimSpace(strings.Split(choice, " (")[0])
+					var selected AccountModel
 					for _, acc := range accounts {
 						if acc.Title == title {
 							selected = acc
@@ -91,8 +105,14 @@ minhthetus-cli git account`,
 					}
 
 					if selected.Email != "" {
-						exec.Command("git", "config", "user.email", selected.Email).Run()
-						exec.Command("git", "config", "user.name", selected.Name).Run()
+						if _, err := git.Run("config", "user.email", selected.Email); err != nil {
+							fmt.Printf("%s Error: %s. Are you inside a Git repository?\n", ui.ErrorMessage(""), err)
+							return
+						}
+						if _, err := git.Run("config", "user.name", selected.Name); err != nil {
+							fmt.Printf("%s Error: %s\n", ui.ErrorMessage(""), err)
+							return
+						}
 						fmt.Printf("%s Applied locally: %s <%s>\n", ui.SuccessMessage(""), selected.Name, selected.Email)
 					}
 				}
@@ -105,66 +125,94 @@ func init() {
 	AccountCmd.Flags().BoolVarP(&manageMode, "manage", "m", false, "Enter management mode (list, create, delete accounts)")
 }
 
-func ensureConfig() {
-	if _, err := os.Stat(configDir); os.IsNotExist(err) {
-		os.MkdirAll(configDir, 0755)
-	}
-	if _, err := os.Stat(configFile); os.IsNotExist(err) {
-		os.WriteFile(configFile, []byte("[]"), 0644)
-	}
-}
-
-func readAccounts() []Account {
-	data, err := os.ReadFile(configFile)
-	if err != nil {
-		return nil
-	}
-	var accounts []Account
-	json.Unmarshal(data, &accounts)
+func readAccounts() []AccountModel {
+	var accounts []AccountModel
+	_ = config.ReadFile("git-accounts.json", &accounts)
 	return accounts
 }
 
-func writeAccounts(accounts []Account) {
-	data, _ := json.MarshalIndent(accounts, "", "  ")
-	os.WriteFile(configFile, data, 0644)
+func writeAccounts(accounts []AccountModel) {
+	_ = config.WriteFile("git-accounts.json", accounts)
 }
 
 func detectIdentity() {
-	levels := []string{"local", "global", "system"}
-	var foundEmail, foundName string
-	var emailLevel, nameLevel string
+	localName, _ := git.Run("config", "--local", "user.name")
+	localEmail, _ := git.Run("config", "--local", "user.email")
 
-	for _, level := range levels {
-		if foundEmail == "" {
-			out, _ := exec.Command("git", "config", "--"+level, "user.email").Output()
-			val := strings.TrimSpace(string(out))
-			if val != "" {
-				foundEmail = val
-				emailLevel = level
-			}
-		}
-		if foundName == "" {
-			out, _ := exec.Command("git", "config", "--"+level, "user.name").Output()
-			val := strings.TrimSpace(string(out))
-			if val != "" {
-				foundName = val
-				nameLevel = level
-			}
-		}
-	}
+	globalName, _ := git.Run("config", "--global", "user.name")
+	globalEmail, _ := git.Run("config", "--global", "user.email")
 
 	fmt.Printf("%s %s\n", ui.TagIcon, ui.BoldStyle.Render("Current Identity Detection:"))
-	if foundEmail != "" {
-		fmt.Printf("  Email: %s %-30s (from %s)\n", ui.CyanStyle().Render(""), fmt.Sprintf("%-30s", foundEmail), ui.YellowStyle().Render(emailLevel))
-	} else {
-		fmt.Printf("  Email: %s\n", ui.RedStyle().Render("Not set"))
+
+	if localName == "" && localEmail == "" && globalName == "" && globalEmail == "" {
+		fmt.Printf("  %s\n", ui.WarningMessage("No Git identity configured on this repository or globally."))
+		return
 	}
 
-	if foundName != "" {
-		fmt.Printf("  Name:  %s %-30s (from %s)\n", ui.CyanStyle().Render(""), fmt.Sprintf("%-30s", foundName), ui.YellowStyle().Render(nameLevel))
-	} else {
-		fmt.Printf("  Name:  %s\n", ui.RedStyle().Render("Not set"))
+	// Define display values (fallback to "not set")
+	displayLocalName := localName
+	if displayLocalName == "" {
+		displayLocalName = "not set"
 	}
+	displayLocalEmail := localEmail
+	if displayLocalEmail == "" {
+		displayLocalEmail = "not set"
+	}
+	displayGlobalName := globalName
+	if displayGlobalName == "" {
+		displayGlobalName = "not set"
+	}
+	displayGlobalEmail := globalEmail
+	if displayGlobalEmail == "" {
+		displayGlobalEmail = "not set"
+	}
+
+	// Styles (no bold)
+	labelSt := lipgloss.NewStyle()
+	valueSt := ui.CyanStyle()
+	levelSt := ui.YellowStyle()
+
+	// Compute max value length for aligned columns
+	maxValLen := 30
+	for _, val := range []string{displayLocalName, displayLocalEmail, displayGlobalName, displayGlobalEmail} {
+		if len(val) > maxValLen {
+			maxValLen = len(val)
+		}
+	}
+
+	// 1. Print Local Config
+	var localNameStr string
+	if localName != "" {
+		localNameStr = valueSt.Render(fmt.Sprintf("%-*s", maxValLen, localName))
+	} else {
+		localNameStr = ui.RedStyle().Render(fmt.Sprintf("%-*s", maxValLen, "not set"))
+	}
+	fmt.Printf("  %s  %s (from %s)\n", labelSt.Render("Name:"), localNameStr, levelSt.Render("local"))
+
+	var localEmailStr string
+	if localEmail != "" {
+		localEmailStr = valueSt.Render(fmt.Sprintf("%-*s", maxValLen, localEmail))
+	} else {
+		localEmailStr = ui.RedStyle().Render(fmt.Sprintf("%-*s", maxValLen, "not set"))
+	}
+	fmt.Printf("  %s %s (from %s)\n", labelSt.Render("Email:"), localEmailStr, levelSt.Render("local"))
+
+	// 2. Print Global Config
+	var globalNameStr string
+	if globalName != "" {
+		globalNameStr = valueSt.Render(fmt.Sprintf("%-*s", maxValLen, globalName))
+	} else {
+		globalNameStr = ui.RedStyle().Render(fmt.Sprintf("%-*s", maxValLen, "not set"))
+	}
+	fmt.Printf("  %s  %s (from %s)\n", labelSt.Render("Name:"), globalNameStr, levelSt.Render("global"))
+
+	var globalEmailStr string
+	if globalEmail != "" {
+		globalEmailStr = valueSt.Render(fmt.Sprintf("%-*s", maxValLen, globalEmail))
+	} else {
+		globalEmailStr = ui.RedStyle().Render(fmt.Sprintf("%-*s", maxValLen, "not set"))
+	}
+	fmt.Printf("  %s %s (from %s)\n", labelSt.Render("Email:"), globalEmailStr, levelSt.Render("global"))
 }
 
 func listAccounts() {
@@ -195,7 +243,7 @@ func createNewAccount() {
 
 	if name != "" && email != "" {
 		accounts := readAccounts()
-		accounts = append(accounts, Account{Title: title, Name: name, Email: email})
+		accounts = append(accounts, AccountModel{Title: title, Name: name, Email: email})
 		writeAccounts(accounts)
 		fmt.Printf("%s %s\n", ui.SuccessMessage(""), "Account saved.")
 	} else {
@@ -210,9 +258,26 @@ func deleteAccount() {
 		return
 	}
 
+	maxTitle := 0
+	maxName := 0
+	maxEmailCol := 0
+	for _, acc := range accounts {
+		if len(acc.Title) > maxTitle {
+			maxTitle = len(acc.Title)
+		}
+		if len(acc.Name) > maxName {
+			maxName = len(acc.Name)
+		}
+		emailColLen := len(acc.Email) + 2
+		if emailColLen > maxEmailCol {
+			maxEmailCol = emailColLen
+		}
+	}
+
 	var options []string
 	for _, acc := range accounts {
-		options = append(options, fmt.Sprintf("%s ( %s <%s> )", acc.Title, acc.Name, acc.Email))
+		emailCol := fmt.Sprintf("<%s>", acc.Email)
+		options = append(options, fmt.Sprintf("%-*s ( %-*s  %-*s )", maxTitle, acc.Title, maxName, acc.Name, maxEmailCol, emailCol))
 	}
 
 	choice := ui.GumFilter(options, "Select account to DELETE...")
@@ -220,9 +285,9 @@ func deleteAccount() {
 		return
 	}
 
-	title := strings.Split(choice, " (")[0]
+	title := strings.TrimSpace(strings.Split(choice, " (")[0])
 	if ui.GumConfirm(fmt.Sprintf("Are you sure you want to delete '%s'?", title)) {
-		var newAccounts []Account
+		var newAccounts []AccountModel
 		for _, acc := range accounts {
 			if acc.Title != title {
 				newAccounts = append(newAccounts, acc)

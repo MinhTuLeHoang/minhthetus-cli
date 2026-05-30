@@ -1,4 +1,6 @@
-package demo
+//go:build dev
+
+package debug
 
 import (
 	"fmt"
@@ -12,10 +14,10 @@ import (
 )
 
 var GumDemoCmd = &cobra.Command{
-	Use:   "gum-demo",
-	Short: "An interactive demonstration of gum-enhanced UI elements.",
+	Use:   "tui-demo",
+	Short: "An interactive demonstration of native TUI elements.",
 	Annotations: map[string]string{
-		"title": "Gum Demo",
+		"title": "TUI Demo",
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// 1. Stylized Header
@@ -27,11 +29,11 @@ var GumDemoCmd = &cobra.Command{
 			Width(50).
 			Margin(1, 2).
 			Padding(1, 2).
-			Render("GUM INTERACTION DEMO")
+			Render("NATIVE TUI INTERACTION DEMO")
 		fmt.Println(header)
 
 		// 2. Interactive Choice
-		action := ui.GumChoose("Say Hello", "System Info", "Spin Demo", "Confirm Demo", "Gum Version", "Exit")
+		action := ui.GumChoose("Say Hello", "System Info", "Spin Demo", "Confirm Demo", "Exit")
 
 		switch action {
 		case "Say Hello":
@@ -66,10 +68,6 @@ var GumDemoCmd = &cobra.Command{
 			} else {
 				fmt.Println(ui.BoldStyle.Foreground(ui.Red).Render("Status: CANCELLED"))
 			}
-
-		case "Gum Version":
-			out, _ := exec.Command("gum", "--version").Output()
-			fmt.Print(string(out))
 
 		case "Exit":
 			fmt.Println(lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Goodbye!"))

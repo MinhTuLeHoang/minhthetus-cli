@@ -29,7 +29,7 @@ minhthetus-cli git checkout`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if jiraID == "" {
 			var err error
-			jiraID, err = ui.Input("Enter JIRA ID (e.g. 9404 or PCFBANK-9404)")
+			jiraID, err = ui.Input("Enter JIRA ID (e.g. 9404 or PCFBANK-9404)", "")
 			if err != nil {
 				fmt.Printf("Error: %v\n", err)
 				return
@@ -91,7 +91,7 @@ minhthetus-cli git checkout`,
 			return
 		}
 
-		desc, err := ui.Input("Enter branch description (e.g. update user profile)")
+		desc, err := ui.Input("Enter branch description (e.g. update user profile)", "")
 		if err != nil || desc == "" {
 			return
 		}

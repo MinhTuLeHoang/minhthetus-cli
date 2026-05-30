@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/MinhTuLeHoang/minhthetus-cli/cmd/demo"
 	"github.com/MinhTuLeHoang/minhthetus-cli/cmd/git"
 	"github.com/MinhTuLeHoang/minhthetus-cli/cmd/sys"
 	"github.com/MinhTuLeHoang/minhthetus-cli/cmd/vng"
@@ -26,6 +25,9 @@ and supports various modules like git, sys, web, and more.`,
 	// Run: func(cmd *cobra.Command, args []string) { },
 }
 
+// Hook for conditionally registering the developer debug command package
+var registerDebug func() = nil
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
@@ -37,7 +39,10 @@ func Execute() {
 	rootCmd.AddCommand(sys.Cmd)
 	rootCmd.AddCommand(web.Cmd)
 	rootCmd.AddCommand(vng.Cmd)
-	rootCmd.AddCommand(demo.Cmd)
+
+	if registerDebug != nil {
+		registerDebug()
+	}
 
 	// Auto-discovery: Load scripts from src/scripts (Phase 3 & 5)
 	loader.DiscoverCommands(rootCmd, "src/scripts")

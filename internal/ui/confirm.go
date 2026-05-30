@@ -15,6 +15,7 @@ type confirmModel struct {
 	quitting    bool
 	confirmed   bool
 	autoApprove bool
+	cursor      int // 0 for Yes/Agree, 1 for No/Cancel
 }
 
 type tickMsg time.Time
@@ -32,12 +33,25 @@ func (m confirmModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "y", "Y", "enter":
+		case "left", "h", "a":
+			m.cursor = 0
+			return m, nil
+		case "right", "l", "d":
+			m.cursor = 1
+			return m, nil
+		case "tab":
+			m.cursor = 1 - m.cursor
+			return m, nil
+		case "y", "Y":
 			m.confirmed = true
 			m.quitting = true
 			return m, tea.Quit
 		case "n", "N", "esc":
 			m.confirmed = false
+			m.quitting = true
+			return m, tea.Quit
+		case "enter":
+			m.confirmed = (m.cursor == 0)
 			m.quitting = true
 			return m, tea.Quit
 		case "ctrl+c":
@@ -63,6 +77,15 @@ func (m confirmModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 var (
 	titleStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("212")).Bold(true)
 	timeoutStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Italic(true)
+
+	activeButtonStyle = lipgloss.NewStyle().
+		Bold(true).
+		Padding(0, 3)
+
+	inactiveButtonStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("244")).
+		Background(lipgloss.Color("236")).
+		Padding(0, 3)
 )
 
 func (m confirmModel) View() string {
@@ -70,18 +93,29 @@ func (m confirmModel) View() string {
 		return ""
 	}
 
-	s := fmt.Sprintf("%s %s", titleStyle.Render(m.prompt), lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("[y/n]"))
-	
+	s := fmt.Sprintf("%s\n\n", titleStyle.Render(m.prompt))
+
+	var yesBtn, noBtn string
+	if m.cursor == 0 {
+		yesBtn = activeButtonStyle.Background(lipgloss.Color("2")).Foreground(lipgloss.Color("0")).Render(" Yes ")
+		noBtn = inactiveButtonStyle.Render(" No ")
+	} else {
+		yesBtn = inactiveButtonStyle.Render(" Yes ")
+		noBtn = activeButtonStyle.Background(lipgloss.Color("1")).Foreground(lipgloss.Color("0")).Render(" No ")
+	}
+
+	s += fmt.Sprintf("  %s    %s", yesBtn, noBtn)
+
 	if m.timeout > 0 {
 		remaining := int(m.timeout.Seconds() - time.Since(m.startTime).Seconds())
 		if remaining < 0 {
 			remaining = 0
 		}
-		s += fmt.Sprintf("\n%s", timeoutStyle.Render(fmt.Sprintf("(Auto-%s in %ds...)", 
+		s += fmt.Sprintf("\n\n%s", timeoutStyle.Render(fmt.Sprintf("(Auto-%s in %ds...)", 
 			func() string { if m.autoApprove { return "approving" }; return "cancelling" }(), 
 			remaining)))
 	}
-	
+
 	return s
 }
 
@@ -92,6 +126,7 @@ func Confirm(prompt string, timeout time.Duration, autoApprove bool) (bool, erro
 		timeout:     timeout,
 		startTime:   time.Now(),
 		autoApprove: autoApprove,
+		cursor:      0, // default focus on Yes
 	}
 
 	p := tea.NewProgram(m)
