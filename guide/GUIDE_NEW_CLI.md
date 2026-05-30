@@ -94,9 +94,40 @@ confirmed, _ := ui.Confirm("Proceed with deploy?", 5*time.Second, true)
 choice, _ := ui.Choose("Select environment:", []string{"dev", "staging", "prod"})
 ```
 
-## 4. Rebuilding
+## 4. Developer / Debug Commands (Dev Build Only)
+
+If you are writing commands or features that are intended only for developers (e.g., demos, experiments, tests, or diagnostic tools), you should place them in the `cmd/debug/` directory.
+
+### Step 1: Add the Dev Build Tag
+Add the `//go:build dev` build tag at the very top of each file under `cmd/debug/`. This ensures the files are completely ignored in standard production builds.
+
+```go
+//go:build dev
+
+package debug
+...
+```
+
+### Step 2: Build the CLI in Dev Mode
+To compile the CLI with these developer commands enabled, run:
+```bash
+make build-dev
+```
+This passes the `-tags dev` compilation flag. Once compiled, you can access your dev-only tools using:
+```bash
+./minhthetus-cli debug
+```
+
+In standard production builds (i.e., running `make build` or standard `go build`), these developer-only commands will not be compiled, keeping the production binary clean, lightweight, and completely secure.
+
+## 5. Rebuilding
+
 After making changes to the Go code, you must rebuild the binary:
 
 ```bash
-go build -o minhthetus-cli main.go
+# Production build (clean binary, no dev commands)
+make build
+
+# Developer build (includes dev/debug commands)
+make build-dev
 ```

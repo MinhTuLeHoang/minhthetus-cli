@@ -1,4 +1,6 @@
-package demo
+//go:build dev
+
+package debug
 
 import (
 	"fmt"

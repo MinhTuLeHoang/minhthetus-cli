@@ -51,7 +51,7 @@ var MergeRequestCmd = &cobra.Command{
 
 		if commitMessage == "" {
 			var err error
-			commitMessage, err = ui.Input("Enter commit message (default: [bump version])")
+			commitMessage, err = ui.Input("Enter commit message (default: [bump version])", "")
 			if err != nil {
 				return
 			}

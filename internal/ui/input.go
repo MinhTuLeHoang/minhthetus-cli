@@ -29,6 +29,14 @@ func (m inputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.quitting = true
 			return m, tea.Quit
 		}
+	case tea.WindowSizeMsg:
+		m.textInput.Width = msg.Width - 4
+		if m.textInput.Width > 120 {
+			m.textInput.Width = 120
+		}
+		if m.textInput.Width < 20 {
+			m.textInput.Width = 20
+		}
 	}
 
 	var cmd tea.Cmd
@@ -44,12 +52,15 @@ func (m inputModel) View() string {
 }
 
 // Input displays a text input and returns the value.
-func Input(placeholder string) (string, error) {
+func Input(placeholder, defaultValue string) (string, error) {
 	ti := textinput.New()
 	ti.Placeholder = placeholder
+	if defaultValue != "" {
+		ti.SetValue(defaultValue)
+	}
 	ti.Focus()
 	ti.CharLimit = 156
-	ti.Width = 20
+	ti.Width = 60
 
 	m := inputModel{textInput: ti}
 

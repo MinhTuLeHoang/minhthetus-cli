@@ -1,13 +1,13 @@
 package git
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/MinhTuLeHoang/minhthetus-cli/internal/config"
 	"github.com/MinhTuLeHoang/minhthetus-cli/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -18,7 +18,7 @@ type Repository struct {
 	Description string `json:"description"`
 }
 
-var listRepoFile = filepath.Join(os.Getenv("HOME"), ".minhthetus-cli", "list-repo.json")
+
 
 var ListRepoCmd = &cobra.Command{
 	Use:   "list-repo",
@@ -30,7 +30,6 @@ var ListRepoCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		for {
-			ensureRepoConfig()
 			ui.ClearScreen()
 
 			repos := readRepos()
@@ -97,23 +96,9 @@ var ListRepoCmd = &cobra.Command{
 	},
 }
 
-func ensureRepoConfig() {
-	dir := filepath.Dir(listRepoFile)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		os.MkdirAll(dir, 0755)
-	}
-	if _, err := os.Stat(listRepoFile); os.IsNotExist(err) {
-		os.WriteFile(listRepoFile, []byte("[]"), 0644)
-	}
-}
-
 func readRepos() []Repository {
-	data, err := os.ReadFile(listRepoFile)
-	if err != nil {
-		return nil
-	}
 	var repos []Repository
-	json.Unmarshal(data, &repos)
+	_ = config.ReadFile("list-repo.json", &repos)
 	return repos
 }
 

@@ -1,55 +1,68 @@
 package ui
 
 import (
-	"os"
-	"os/exec"
 	"strings"
+	"time"
 )
 
-// GumChoose opens a gum choose menu
+// GumChoose opens a choose menu using native TUI
 func GumChoose(options ...string) string {
-	cmd := exec.Command("gum", append([]string{"choose"}, options...)...)
-	cmd.Stderr = os.Stderr
-	out, _ := cmd.Output()
-	return strings.TrimSpace(string(out))
-}
-
-// GumConfirm opens a gum confirm dialog
-func GumConfirm(prompt string) bool {
-	cmd := exec.Command("gum", "confirm", prompt)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	return err == nil
-}
-
-// GumConfirmTimeout opens a gum confirm dialog with a timeout
-func GumConfirmTimeout(prompt, timeout string) bool {
-	cmd := exec.Command("gum", "confirm", prompt, "--timeout", timeout, "--default", "Yes")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	return err == nil
-}
-
-// GumInput opens a gum input field
-func GumInput(placeholder, value string) string {
-	args := []string{"input", "--placeholder", placeholder}
-	if value != "" {
-		args = append(args, "--value", value)
+	choice, err := Choose("Select an option:", options)
+	if err != nil {
+		return ""
 	}
-	cmd := exec.Command("gum", args...)
-	cmd.Stderr = os.Stderr
-	out, _ := cmd.Output()
-	return strings.TrimSpace(string(out))
+	return choice
 }
 
-// GumFilter opens a gum filter menu
+// GumConfirm opens a confirm dialog using native TUI
+func GumConfirm(prompt string) bool {
+	confirmed, err := Confirm(prompt, 0, false)
+	if err != nil {
+		return false
+	}
+	return confirmed
+}
+
+// GumConfirmTimeout opens a confirm dialog with a timeout using native TUI
+func GumConfirmTimeout(prompt, timeout string) bool {
+	dur := parseDuration(timeout)
+	confirmed, err := Confirm(prompt, dur, true)
+	if err != nil {
+		return false
+	}
+	return confirmed
+}
+
+// GumInput opens an input field using native TUI
+func GumInput(placeholder, value string) string {
+	res, err := Input(placeholder, value)
+	if err != nil {
+		return ""
+	}
+	return res
+}
+
+// GumFilter opens a filter menu using native TUI
 func GumFilter(options []string, placeholder string) string {
-	input := strings.Join(options, "\n")
-	cmd := exec.Command("gum", "filter", "--placeholder", placeholder)
-	cmd.Stdin = strings.NewReader(input)
-	cmd.Stderr = os.Stderr
-	out, _ := cmd.Output()
-	return strings.TrimSpace(string(out))
+	choice, err := Choose(placeholder, options)
+	if err != nil {
+		return ""
+	}
+	return choice
+}
+
+// Helper to parse duration strings like "2s" or simple numbers "2" to time.Duration
+func parseDuration(s string) time.Duration {
+	if s == "" {
+		return 0
+	}
+	// If it's a raw number, assume seconds
+	if !strings.HasSuffix(s, "s") && !strings.HasSuffix(s, "m") && !strings.HasSuffix(s, "h") && !strings.HasSuffix(s, "ms") {
+		s += "s"
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return 0
+	}
+	return d
 }

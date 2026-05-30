@@ -79,8 +79,80 @@ func (m selectModel) View() string {
 	return "\n" + m.list.View()
 }
 
+type simpleChooseModel struct {
+	title    string
+	options  []string
+	cursor   int
+	quitting bool
+	choice   string
+}
+
+func (m simpleChooseModel) Init() tea.Cmd {
+	return nil
+}
+
+func (m simpleChooseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "up", "k":
+			if m.cursor > 0 {
+				m.cursor--
+			} else {
+				m.cursor = len(m.options) - 1
+			}
+		case "down", "j":
+			if m.cursor < len(m.options)-1 {
+				m.cursor++
+			} else {
+				m.cursor = 0
+			}
+		case "enter":
+			m.choice = m.options[m.cursor]
+			m.quitting = true
+			return m, tea.Quit
+		case "ctrl+c", "esc":
+			m.quitting = true
+			return m, tea.Quit
+		}
+	}
+	return m, nil
+}
+
+func (m simpleChooseModel) View() string {
+	if m.quitting {
+		return ""
+	}
+	s := ""
+	if m.title != "" {
+		s += titleStyle.Render(m.title) + "\n\n"
+	}
+	for i, opt := range m.options {
+		if i == m.cursor {
+			s += selectedItemStyle.Render("> " + opt) + "\n"
+		} else {
+			s += itemStyle.Render("  " + opt) + "\n"
+		}
+	}
+	return s
+}
+
 // Choose displays a list of options and returns the selected one.
+// It automatically switches to a compact inline layout for 7 or fewer options to avoid scrolling issues.
 func Choose(title string, options []string) (string, error) {
+	if len(options) <= 7 {
+		m := simpleChooseModel{
+			title:   title,
+			options: options,
+		}
+		p := tea.NewProgram(m)
+		finalModel, err := p.Run()
+		if err != nil {
+			return "", err
+		}
+		return finalModel.(simpleChooseModel).choice, nil
+	}
+
 	items := make([]list.Item, len(options))
 	for i, opt := range options {
 		items[i] = item(opt)
