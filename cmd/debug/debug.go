@@ -18,4 +18,5 @@ var Cmd = &cobra.Command{
 func init() {
 	Cmd.AddCommand(SwitchNodeCmd)
 	Cmd.AddCommand(GumDemoCmd)
+	Cmd.AddCommand(PushRcCmd)
 }

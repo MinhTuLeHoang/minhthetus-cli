@@ -21,3 +21,7 @@ minhthetus-cli web start [options] [-- [args]]
         *   **yarn**: `yarn start "$@"`
 3.  **Forwarding Arguments**:
     *   Any arguments provided to `minhthetus-cli web start` are forwarded directly to the underlying package manager's start command.
+
+## Version History
+* **First Stable Version Supported**: `v1.0.0`
+* **Latest Stable Version Update**: `v1.0.0`

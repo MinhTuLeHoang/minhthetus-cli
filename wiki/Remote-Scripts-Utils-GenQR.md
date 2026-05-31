@@ -1,6 +1,6 @@
 # Utils QR Generator (Remote)
 
-Generates a QR code from text or a URL directly in your terminal. This is a remote script designed to be lightweight.
+Generates a QR code from text or a URL directly in your terminal. This is a remote command designed to keep the main CLI package lightweight.
 
 ## Usage
 ```bash
@@ -21,12 +21,14 @@ minhthetus-cli utils genQR <content> [options]
 2.  **Mode Resolution**:
     *   **API Mode (Default)**:
         *   Constructs a request to `https://qrenco.de/`.
-        *   Passes the content via a POST request with the correct multipart form field (`-=<-`).
         *   Displays the raw ANSI output received from the service.
     *   **Self-Implement**:
-        *   Executes a bundled Node.js script (`qr-logic.js`).
         *   Encodes the data into a QR matrix using a local implementation (no external dependencies).
         *   Renders the matrix using "Half-Block" characters for a perfect 1:1 square aspect ratio.
 3.  **Display Output**:
     *   Prints the QR code to the standard output.
     *   Provides a success message upon completion.
+
+## Version History
+* **First Stable Version Supported**: `v1.0.0`
+* **Latest Stable Version Update**: `v1.0.0`
