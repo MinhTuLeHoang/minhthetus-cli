@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-06-01
+
+### Added
+- Flat GitHub user wiki documentation under wiki/ directory
+- Automated publish pipeline using GitHub CLI for Pull Request creation, merging, and tag pushing
+- New make deploy-wiki synchronization utility
+- New push-rc debug subcommand for release candidate bumping
+- Centralized fallback version variables
+
+### Removed
+- All legacy shell scripts and old duplicate technical guides
+
 ## [1.0.2] - 2026-05-31
 
 ### Changed
