@@ -1,64 +1,73 @@
 ---
 name: new-cli
-description: Provides instructions and a standardized workflow for adding new CLI commands and features to the minhthetus-cli project.
+description: Provides instructions and a standardized workflow for adding new native Go Cobra commands and Bubble Tea features to the minhthetus-cli project.
 ---
 
 # New CLI Feature Skill
 
-Use this skill when you are asked to add a new command, sub-command, or feature to the `minhthetus-cli`.
+Use this skill when you are asked to add a new command, sub-command, or feature to the native Go implementation of `minhthetus-cli`.
 
 ## Instructions
 
-1.  **Understand the Command Hierarchy**:
-    *   Commands map to the file structure in `src/scripts/`.
-    *   Example: `minhthetus-cli git account` -> `src/scripts/git/account.sh`.
-    *   N-level nesting is supported by creating subdirectories.
-    *   **Hybrid CLI**: Essential scripts go in `src/scripts/` (bundled). Optional or heavy scripts go in `src/remote-scripts/` (GitHub-only, executed via `npx`).
+1.  **Understand the Cobra Command Hierarchy**:
+    *   Commands map to the file structure under `cmd/`.
+    *   Example: `minhthetus-cli git account` -> `cmd/git/account.go` using package `git`.
+    *   Cobra commands are registered by calling `.AddCommand()` on parent commands in the module's `init()` function (e.g. in `cmd/git/git.go`).
 
-2.  **Create the Script File**:
-    *   Identify the appropriate directory in `src/scripts/`.
-    *   Create a `.sh` file with a descriptive name.
-    *   Add the mandatory description header on line 2. This must be short and clear (max 2 lines, 1 line preferred):
-        ```bash
-        #!/bin/bash
-        # Description: Brief one-line summary of the command.
+2.  **Create the Go Command File**:
+    *   Identify the appropriate package folder under `cmd/`.
+    *   Create a new file with a descriptive snake_case name (e.g. `cmd/git/my_command.go`).
+    *   Define the `cobra.Command` structure:
+        ```go
+        package git
+
+        import (
+        	"fmt"
+        	"github.com/spf13/cobra"
+        )
+
+        var MyCommandCmd = &cobra.Command{
+        	Use:   "my-command",
+        	Short: "A brief description of your command",
+        	Long:  `A longer multi-line description of the command's behavior and flow.`,
+        	Run: func(cmd *cobra.Command, args []string) {
+        		// Implementation logic
+        	},
+        }
         ```
 
-3.  **Implement Standardized Help**:
-    *   Define help metadata variables:
-        *   `HELP_TITLE`: Title of the script.
-        *   `HELP_USAGE`: Example usage string.
-        *   `HELP_DESCRIPTION`: Detailed description (multi-line supported).
-        *   `HELP_OPTIONS`: Piped list of options (`-f, --flag | Description`). Always list the short flag before the long flag, separated by a comma. Use `\n` for multi-line. **Do NOT** add `-h` or `--help`; it is added automatically.
-        *   `HELP_EXAMPLE`: Concrete example command.
-        *   `HELP_TAB_SIZE`: (Optional) Change left indentation (default: 3).
-    *   Source the help system:
-        *   If in root of `src/scripts/`: `source "$(dirname "$0")/generalScripts/print-help.sh" "$@"`
-        *   If in 1st level subfolder: `source "$(dirname "$0")/../generalScripts/print-help.sh" "$@"`
-        *   If in 2nd level subfolder: `source "$(dirname "$0")/../../generalScripts/print-help.sh" "$@"`
-    *   **Note**: `print-help.sh` automatically handles the `-h/--help` flags and sources `constants.sh`.
+3.  **Register the Command**:
+    *   Attach the subcommand to its parent in the module's `init()` function (e.g. `cmd/git/git.go` or `cmd/root.go`):
+        ```go
+        func init() {
+        	Cmd.AddCommand(MyCommandCmd)
+        }
+        ```
 
 4.  **Use UI Helpers & Icons**:
-    *   Use predefined variables for styling:
-        *   Colors: `${GREEN}`, `${YELLOW}`, `${RED}`, `${BLUE}`, `${NC}`.
-        *   Icons: `${CHECK}`, `${CROSS}`, `${INFO}`, `${WARN}`, `${BULLET}`.
-    *   Always use `printf "%b\n" "..."` when using these variables to ensure correct escape sequence interpretation.
+    *   The CLI uses a zero-dependency architecture. For all interactive UI components, use the pre-built Bubble Tea wrapper functions inside the `internal/ui` package:
+        *   **Confirmations**: `ui.Confirm(prompt string, timeout time.Duration, defaultVal bool)` (e.g. `internal/ui/confirm.go`).
+        *   **Filtering Selectors**: `ui.Choose(prompt string, options []string)` (e.g. `internal/ui/select.go`).
+        *   **Text Inputs**: `ui.Input(prompt string, placeholder string)` (e.g. `internal/ui/input.go`).
+        *   **Spinners**: Use UI indicators for long-running operations.
 
-5.  **Test the Implementation**:
-    *   Verify help display: `minhthetus-cli <command-path> -h`.
-    *   Check for help summary: `minhthetus-cli help` or just `minhthetus-cli`.
-    *   Verify functionality by running the command.
+5.  **Developer / Debug Commands (Dev Build Only)**:
+    *   If a command is intended only for development, diagnostic, or testing purposes:
+        *   Place it in the `cmd/debug/` directory.
+        *   Add the `//go:build dev` build tag at the very top of each file.
+        *   Register it under `cmd/debug/debug.go`.
+        *   Build the binary in dev mode via `make build-dev` to access it.
 
-6.  **Maintain Documentation**:
-    *   Add a technical guide in `guide/cli-functions/` matching the script's path (e.g., `guide/cli-functions/my-module/my-cmd.md`).
-    *   This is part of the `update-docs` skill, but essential for a complete feature implementation.
+6.  **Test the Implementation**:
+    *   **Build the binary**: ALWAYS run `make build` (or `make build-dev`) to compile the latest changes. DO NOT run `go build` directly, as it will trigger a security prompt.
+    *   Verify help display: `./minhthetus-cli <command-path> -h`.
+    *   Check for help summary: `./minhthetus-cli help` or just `./minhthetus-cli`.
+    *   Verify functionality by running the compiled local binary:
+        ```bash
+        ./minhthetus-cli <parent-command> <my-command> --help
+        ```
 
-## Remote Commands (Optional)
-
-If a command is heavy (large dependencies) or optional, use the "Remote" approach:
-1.  **File Location**: Store it in `src/remote-scripts/...`. These files are excluded from the npm package.
-2.  **Registry**: Register it in `src/remote-registry.json`:
-    ```json
-    "utils/genQR": { "description": "Generate QR code" }
-    ```
-3.  **Workflow**: When the user runs the command, the CLI will see it's missing locally but present in the registry, then it will call `npx github:MinhTuLeHoang/minhthetus-cli ...` to execute it directly from the source code.
+7.  **Maintain Documentation**:
+    *   Create a flat user documentation page in `/wiki/` following the kebab-case naming standard (e.g. `wiki/Git-My-Command.md`).
+    *   Add a **Version History** section to the bottom, noting the stable version that introduced the feature.
+    *   List the new page in `wiki/_Sidebar.md` and `wiki/Home.md`.

@@ -1,4 +1,4 @@
-.PHONY: build build-dev install setup-completion help
+.PHONY: build build-dev install setup-completion publish help
 
 BINARY_NAME=minhthetus-cli
 
@@ -6,10 +6,14 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Targets:"
-	@echo "  build             Build the binary and auto-setup shell completion"
-	@echo "  build-dev         Build the developer binary with debug commands enabled"
-	@echo "  install           Build and install the binary to /usr/local/bin"
-	@echo "  setup-completion  Manually setup shell completion"
+	@echo "  build                     Build the binary and auto-setup shell completion"
+	@echo "  build-dev                 Build the developer binary with debug commands enabled"
+	@echo "  install                   Build and install the binary to /usr/local/bin"
+	@echo "  setup-completion          Manually setup shell completion"
+	@echo "  publish                   Run the automated stable publishing checklist"
+	@echo "  sync-master               Verify and pull latest updates from origin master"
+	@echo "  get-latest-stable-version Fetch and print the highest stable tag version"
+	@echo "  deploy-wiki               Sync local wiki/ changes to GitHub Wiki"
 
 build:
 	@echo "🛠 Building $(BINARY_NAME)..."
@@ -34,3 +38,15 @@ install: build
 
 setup-completion: build
 	@./$(BINARY_NAME) setup-completion
+
+publish:
+	@go run scripts/publish/main.go
+
+sync-master:
+	@go run scripts/publish/sync_master.go
+
+get-latest-stable-version:
+	@go run scripts/publish/get_version.go
+
+deploy-wiki:
+	@bash scripts/deploy-wiki.sh

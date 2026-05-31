@@ -32,3 +32,7 @@ minhthetus-cli git sync-branch
 5.  **Cleanup**:
     *   Returns to the `ORIGINAL_BRANCH`.
     *   Reports final status for both branches.
+
+## Version History
+* **First Stable Version Supported**: `v1.0.0`
+* **Latest Stable Version Update**: `v1.0.0`

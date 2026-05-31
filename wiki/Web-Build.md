@@ -13,7 +13,7 @@ minhthetus-cli web build [options] [-- [args]]
 ## Flow
 
 1.  **Environment Detection**:
-    *   Detects the package manager (pnpm, npm, or yarn).
+    *   Detects the package manager (pnpm, npm, or yarn) in the local repository.
 2.  **Background Execution**:
     *   Starts the build command in the background:
         *   **pnpm**: `pnpm run build`
@@ -27,3 +27,7 @@ minhthetus-cli web build [options] [-- [args]]
     *   Checks the exit code.
     *   Reports success or failure and displays the total duration.
     *   Cleans up the temporary log file.
+
+## Version History
+* **First Stable Version Supported**: `v1.0.0`
+* **Latest Stable Version Update**: `v1.0.0`

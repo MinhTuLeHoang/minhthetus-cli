@@ -11,7 +11,7 @@ minhthetus-cli git tag-dev-stg [options]
 *   `-P, --patch`: Increment the patch version.
 *   `-N, --minor`: Increment the minor version (Default).
 *   `-M, --major`: Increment the major version.
-*   `-m <message>`: Provide a custom tag message.
+*   `-m, --message <msg>`: Provide a custom tag message.
 
 ## Flow
 
@@ -31,3 +31,7 @@ minhthetus-cli git tag-dev-stg [options]
     *   Pushes both tags to `origin`.
 6.  **Reporting**:
     *   Confirms successful creation and push of both tags.
+
+## Version History
+* **First Stable Version Supported**: `v1.0.0`
+* **Latest Stable Version Update**: `v1.0.0`

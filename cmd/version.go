@@ -3,12 +3,8 @@ package cmd
 import (
 	"fmt"
 	"runtime/debug"
-)
 
-var (
-	// Default/Fallback version info injected at build time (e.g. for Homebrew or manual build)
-	Version   = "1.0.0"
-	BuildDate = "2026-05-29"
+	"github.com/MinhTuLeHoang/minhthetus-cli/internal/config"
 )
 
 // getVersionString resolves the installation version dynamically from Go runtime metadata, falling back to build variables
@@ -18,7 +14,7 @@ func getVersionString() string {
 			return info.Main.Version
 		}
 	}
-	return Version
+	return config.Version
 }
 
 // getBuildDate resolves the exact Git commit date dynamically from Go build metadata, falling back to build variables
@@ -34,7 +30,7 @@ func getBuildDate() string {
 			}
 		}
 	}
-	return BuildDate
+	return config.BuildDate
 }
 
 func init() {

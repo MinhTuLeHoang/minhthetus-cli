@@ -14,7 +14,7 @@ minhthetus-cli web install [options]
 ## Flow
 
 1.  **Environment Detection**:
-    *   Calls `get_web_info` to detect:
+    *   Detects:
         *   Node.js version (via `.nvmrc`).
         *   Package manager (pnpm, npm, or yarn) by detecting lock files (`pnpm-lock.yaml`, `package-lock.json`, `yarn.lock`).
 2.  **Force Mode Handling**:
@@ -28,3 +28,7 @@ minhthetus-cli web install [options]
         *   **yarn**: `yarn install --frozen-lockfile` (CI) or `yarn install`.
 4.  **Reporting**:
     *   Measures elapsed time and reports success or failure with the elapsed duration.
+
+## Version History
+* **First Stable Version Supported**: `v1.0.0`
+* **Latest Stable Version Update**: `v1.0.0`
