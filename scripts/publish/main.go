@@ -281,6 +281,15 @@ const (
 	}
 	fmt.Println("  ✓ Local master successfully updated with release changes.")
 
+	// 13.5 Compile local build to verify correctness and update local binary
+	fmt.Println("\n🛠 Compiling local developer build...")
+	buildOut, err := runCmd("make", "build-dev")
+	if err != nil {
+		fmt.Printf("❌ Error compiling Go binary: %s\n", buildOut)
+		os.Exit(1)
+	}
+	fmt.Println("  ✓ Local binary successfully compiled and shell completion configured.")
+
 	// 14. Create and push annotated tag
 	tagVersion := "v" + nextVersion
 	tagMsg := fmt.Sprintf("Release %s", tagVersion)
@@ -339,6 +348,7 @@ const (
 	fmt.Println("==========================================================================")
 	fmt.Printf("  ✓ Released Version: %s\n", tagVersion)
 	fmt.Printf("  ✓ Synced local master branch.\n")
+	fmt.Printf("  ✓ Compiled local dev build with updated version.\n")
 	fmt.Printf("  ✓ Pushed tag %s live to GitHub.\n", tagVersion)
 	if wikiUpdated {
 		fmt.Println("  ✓ Synchronized Wiki documentation live to GitHub.")
