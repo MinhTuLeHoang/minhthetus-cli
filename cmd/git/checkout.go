@@ -62,7 +62,7 @@ minhthetus-cli git checkout`,
 				var selectedBranch string
 				if len(branches) == 1 {
 					selectedBranch = branches[0]
-					fmt.Printf("✅ Found matching branch: %s\n", selectedBranch)
+					fmt.Printf("✅ Found matching branch: %s\n", ui.CyanStyle().Render(selectedBranch))
 				} else {
 					selectedBranch, err = ui.Choose("Multiple branches found. Select one:", branches)
 					if err != nil {
@@ -72,10 +72,11 @@ minhthetus-cli git checkout`,
 				}
 
 				if selectedBranch != "" {
-					if err := git.RunInteractive("checkout", selectedBranch); err != nil {
+					if _, err := git.Run("checkout", selectedBranch); err != nil {
 						fmt.Printf("Error checking out branch: %v\n", err)
 						return
 					}
+					fmt.Printf("%s Switched to branch '%s'\n", ui.SwitchIcon, ui.CyanStyle().Render(selectedBranch))
 					fmt.Println("⏳ Fetching latest updates from origin...")
 					git.Run("pull", "origin", selectedBranch)
 					return
@@ -108,13 +109,13 @@ minhthetus-cli git checkout`,
 			finalName = branchType + "/" + jiraID + "-" + formattedDesc
 		}
 
-		fmt.Printf("⏳ Creating and checking out: %s...\n", finalName)
+		fmt.Printf("⏳ Creating and checking out: %s...\n", ui.CyanStyle().Render(finalName))
 		if err := git.RunInteractive("checkout", "-b", finalName); err != nil {
 			fmt.Printf("Error creating branch: %v\n", err)
 			return
 		}
 
-		fmt.Printf("✅ Successfully created and checked out %s\n", finalName)
+		fmt.Printf("✅ Successfully created and checked out %s\n", ui.CyanStyle().Render(finalName))
 		fmt.Println("⏳ Pushing to origin...")
 		if _, err := git.Run("push", "-u", "origin", finalName); err != nil {
 			fmt.Printf("⚠️ Failed to push to origin: %v\n", err)
