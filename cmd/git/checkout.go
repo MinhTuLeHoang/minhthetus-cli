@@ -2,6 +2,7 @@ package git
 
 import (
 	"fmt"
+	"os/exec"
 	"regexp"
 	"strings"
 
@@ -125,4 +126,31 @@ minhthetus-cli git checkout`,
 
 func init() {
 	CheckoutCmd.Flags().StringVarP(&jiraID, "jira-ticket", "j", "", "JIRA ticket ID")
+	
+	CheckoutCmd.RegisterFlagCompletionFunc("jira-ticket", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		out, err := exec.Command("git", "branch", "--format=%(refname:short)").Output()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		
+		re := regexp.MustCompile(`([A-Z]+-[0-9]+|[0-9]+)`)
+		var suggestions []string
+		seen := make(map[string]bool)
+		
+		for _, branch := range strings.Split(string(out), "\n") {
+			branch = strings.TrimSpace(branch)
+			if branch == "" {
+				continue
+			}
+			matches := re.FindAllString(branch, -1)
+			for _, m := range matches {
+				val := strings.ToUpper(m)
+				if !seen[val] {
+					seen[val] = true
+					suggestions = append(suggestions, val)
+				}
+			}
+		}
+		return suggestions, cobra.ShellCompDirectiveNoFileComp
+	})
 }

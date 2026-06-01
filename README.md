@@ -43,6 +43,9 @@ brew install MinhTuLeHoang/tap/minhthetus-cli
 ```bash
 # Download and install via Go's toolchain (Go 1.21+ required)
 go install github.com/MinhTuLeHoang/minhthetus-cli@latest
+
+# Set up shell autocomplete (required for Go install)
+minhthetus-cli setup-completion
 ```
 
 ### Option 3: Manual Installation (From Source clone)

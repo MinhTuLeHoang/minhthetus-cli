@@ -25,8 +25,12 @@ var TagDevStgCmd = &cobra.Command{
 	Long:  "Automatically calculates the next version based on existing stg/qc tags, creates new annotated tags on the CURRENT branch, and pushes to origin.",
 	Example: `minhthetus-cli git tag-dev-stg -P -m "Hotfix for production"
 minhthetus-cli git tag-dev-stg`,
+	Args:  cobra.NoArgs,
 	Annotations: map[string]string{
 		"title": "Git Tag Dev/Stg",
+	},
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"-P", "--patch", "-N", "--minor", "-M", "--major", "-m", "--message", "-h", "--help"}, cobra.ShellCompDirectiveNoFileComp
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("%s Starting Super Tag process...\n", ui.InfoMessage(""))
@@ -109,6 +113,16 @@ func init() {
 	TagDevStgCmd.Flags().BoolVarP(&minorInc, "minor", "N", false, "Increment the minor version (e.g. 1.0.0 -> 1.1.0) [Default]")
 	TagDevStgCmd.Flags().BoolVarP(&majorInc, "major", "M", false, "Increment the major version (e.g. 1.0.0 -> 2.0.0)")
 	TagDevStgCmd.Flags().StringVarP(&message, "message", "m", "", "Provide a custom tag message")
+	
+	TagDevStgCmd.RegisterFlagCompletionFunc("message", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		templates := []string{
+			"dev release: ",
+			"staging release: ",
+			"hotfix release: ",
+			"v",
+		}
+		return templates, cobra.ShellCompDirectiveNoFileComp
+	})
 }
 
 func getLatestTag(pattern string) string {

@@ -13,6 +13,10 @@ import (
 var setupCompletionCmd = &cobra.Command{
 	Use:   "setup-completion",
 	Short: "Install tab completion for your shell",
+	Args:  cobra.NoArgs,
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"--silent", "-h", "--help"}, cobra.ShellCompDirectiveNoFileComp
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		silent, _ := cmd.Flags().GetBool("silent")
 		SetupCompletion(silent)

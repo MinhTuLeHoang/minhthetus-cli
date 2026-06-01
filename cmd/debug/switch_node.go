@@ -5,6 +5,7 @@ package debug
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/MinhTuLeHoang/minhthetus-cli/internal/ui"
 	"github.com/spf13/cobra"
@@ -15,8 +16,12 @@ var nodeVersion string
 var SwitchNodeCmd = &cobra.Command{
 	Use:   "switch-node",
 	Short: "Tests the shell integration pipe by requesting a Node.js version switch via nvm.",
+	Args:  cobra.NoArgs,
 	Annotations: map[string]string{
 		"title": "Switch Node",
+	},
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"--node", "-h", "--help"}, cobra.ShellCompDirectiveNoFileComp
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if nodeVersion == "" {
@@ -47,4 +52,23 @@ var SwitchNodeCmd = &cobra.Command{
 
 func init() {
 	SwitchNodeCmd.Flags().StringVarP(&nodeVersion, "node", "", "", "The Node version to switch to (e.g., 20)")
+	
+	SwitchNodeCmd.RegisterFlagCompletionFunc("node", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		home, _ := os.UserHomeDir()
+		nvmDir := filepath.Join(home, ".nvm", "versions", "node")
+		var versions []string
+		
+		if entries, err := os.ReadDir(nvmDir); err == nil {
+			for _, entry := range entries {
+				if entry.IsDir() {
+					versions = append(versions, entry.Name())
+				}
+			}
+		}
+		
+		if len(versions) == 0 {
+			versions = []string{"18", "20", "22", "lts/*", "node"}
+		}
+		return versions, cobra.ShellCompDirectiveNoFileComp
+	})
 }

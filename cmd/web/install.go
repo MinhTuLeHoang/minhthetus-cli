@@ -21,8 +21,12 @@ var InstallCmd = &cobra.Command{
 	Long:  "Installs project dependencies with automatic Node.js version switching and package manager detection.",
 	Example: `minhthetus-cli web install --force
 minhthetus-cli web install --ci`,
+	Args:  cobra.NoArgs,
 	Annotations: map[string]string{
 		"title": "Web Project Installer",
+	},
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"-f", "--force", "--ci", "-h", "--help"}, cobra.ShellCompDirectiveNoFileComp
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		trackCurrentRepo()
