@@ -48,7 +48,7 @@ make get-latest-stable-version
     *   `Changed`
     *   `Fixed`
     *   `Removed`
-5.  Calculate the `<new-version>` string based on semantic rules (e.g. bump `patch` or `minor` based on change gravity. Major bumps are blocked).
+5.  **PAUSE and Ask the User for Version Bump**: Output the current stable version and ask the user whether they want to bump the **minor** or **patch** version (major bumps are blocked). Once the user responds with their choice, calculate the `<new-version>` string accordingly (e.g. `v1.0.3` or `v1.1.0`).
 
 ### Step 4: Execute Non-Interactive Release
 Run the publishing script, passing the calculated target version and generated changelog entries as CLI arguments:
