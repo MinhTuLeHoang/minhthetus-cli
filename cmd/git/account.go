@@ -27,8 +27,12 @@ var AccountCmd = &cobra.Command{
 	Long:  "Managed Git identities. Quickly switch between accounts or manage your saved list.",
 	Example: `minhthetus-cli git account --manage
 minhthetus-cli git account`,
+	Args:  cobra.NoArgs,
 	Annotations: map[string]string{
 		"title": "Git Account Manager",
+	},
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"-m", "--manage", "-h", "--help"}, cobra.ShellCompDirectiveNoFileComp
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 

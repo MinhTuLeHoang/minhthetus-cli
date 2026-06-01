@@ -22,8 +22,12 @@ var BackupBranchCmd = &cobra.Command{
 Maintains up to 3 versions of backups for the current branch and prompts for cleanup if exceeded.`,
 	Example: `minhthetus-cli git backup-branch
 minhthetus-cli git backup-branch --list`,
+	Args:  cobra.NoArgs,
 	Annotations: map[string]string{
 		"title": "Git Backup Branch",
+	},
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"-l", "--list", "-h", "--help"}, cobra.ShellCompDirectiveNoFileComp
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		currentBranch := getCurrentBranch()

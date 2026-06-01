@@ -25,6 +25,10 @@ var (
 var MergeRequestCmd = &cobra.Command{
 	Use:   "merge-request",
 	Short: "Automatically bumps version, commits changes, and prepares a Merge Request",
+	Args:  cobra.NoArgs,
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"-M", "--major", "-N", "--minor", "-P", "--patch", "--no-version", "-m", "--message", "-h", "--help"}, cobra.ShellCompDirectiveNoFileComp
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		currentBranch, err := git.Run("rev-parse", "--abbrev-ref", "HEAD")
 		if err != nil {
@@ -161,4 +165,16 @@ func init() {
 	MergeRequestCmd.Flags().BoolVarP(&patch, "patch", "P", false, "Force patch version bump")
 	MergeRequestCmd.Flags().BoolVar(&noVersion, "no-version", false, "Skip version bump step")
 	MergeRequestCmd.Flags().StringVarP(&commitMessage, "message", "m", "", "Commit message")
+	
+	MergeRequestCmd.RegisterFlagCompletionFunc("message", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		prefixes := []string{
+			"feat: impl ",
+			"fix: resolve ",
+			"chore: update ",
+			"docs: update doc for ",
+			"refactor: reorganize ",
+			"test: add tests for ",
+		}
+		return prefixes, cobra.ShellCompDirectiveNoFileComp
+	})
 }
