@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-01
+
+### Added
+- Dynamic autocomplete flag value suggestions for all subcommands (hello, checkout, merge-request, tag-dev-stg, switch-node)
+- Instant flag-name autocomplete suggestions on empty <tab> input for all commands with flags
+
+### Changed
+- Guided Go install users to run setup-completion in README.md
+
 ## [1.0.3] - 2026-06-01
 
 ### Added
