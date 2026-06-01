@@ -51,10 +51,10 @@ make get-latest-stable-version
 5.  **PAUSE and Ask the User for Version Bump**: Output the current stable version and ask the user whether they want to bump the **minor** or **patch** version (major bumps are blocked). Once the user responds with their choice, calculate the `<new-version>` string accordingly (e.g. `v1.0.3` or `v1.1.0`).
 
 ### Step 4: Execute Non-Interactive Release
-Run the publishing script, passing the calculated target version and generated changelog entries as CLI arguments:
+Run the publishing script through the Makefile target, passing the calculated target version and generated changelog entries as the `ARGS` variable:
 ```bash
-go run scripts/publish/main.go --version <new-version> --added "Added feature X" --changed "Updated library Y" --fixed "Resolved bug Z"
+make publish ARGS="--version <new-version> --added 'Added feature X' --changed 'Updated library Y' --fixed 'Resolved bug Z'"
 ```
-*(You can pass multiple `--added`, `--changed`, `--fixed`, or `--removed` flags as arguments).*
+*(You can pass multiple `--added`, `--changed`, `--fixed`, or `--removed` flags inside the ARGS string).*
 
 The script will automatically execute the checkout, version constant updates, changelog prepending, git commit, push, PR creation via `gh pr create`, auto-merge, local master pull, and tag generation/pushing without pausing for any terminal input.
