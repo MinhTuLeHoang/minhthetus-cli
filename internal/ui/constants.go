@@ -30,6 +30,7 @@ var (
 	RocketIcon    = "🚀"
 	HammerIcon    = "🔨"
 	HourglassIcon = "⏳"
+	SwitchIcon    = "🔄"
 )
 
 // SuccessMessage returns a formatted success message
