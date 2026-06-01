@@ -40,7 +40,7 @@ setup-completion: build
 	@./$(BINARY_NAME) setup-completion
 
 publish:
-	@go run scripts/publish/main.go
+	@go run scripts/publish/main.go $(ARGS)
 
 sync-master:
 	@go run scripts/publish/sync_master.go
