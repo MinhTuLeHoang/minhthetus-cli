@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-06-01
+
+### Changed
+- Color-coded git branch names in git checkout command output
+- Ran git checkout command in silent mode during discovery
+- Documented make publish usage with ARGS variable
+
 ## [1.1.0] - 2026-06-01
 
 ### Added
