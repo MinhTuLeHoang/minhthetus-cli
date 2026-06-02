@@ -23,6 +23,9 @@ If a human developer is running the release:
 ## 🤖 AI Agent Automated Workflow
 If you are an AI agent executing the release programmatically in the background, you can bypass the interactive prompts entirely using our modular sub-tools:
 
+> [!IMPORTANT]
+> **CRITICAL: You MUST execute the release tasks using the defined `make` commands exactly as instructed below. Do NOT run the underlying `go run` or other direct Go shell commands, as environment safeguards and automation hooks are strictly configured via the Makefile.**
+
 ### Step 1: Branch Sync & Verification
 Run the pre-approved Makefile target to verify and synchronize the local master branch:
 ```bash
