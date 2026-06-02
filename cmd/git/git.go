@@ -22,4 +22,5 @@ func init() {
 	Cmd.AddCommand(BackupBranchCmd)
 	Cmd.AddCommand(SyncBranchCmd)
 	Cmd.AddCommand(ListRepoCmd)
+	Cmd.AddCommand(TreeCmd)
 }

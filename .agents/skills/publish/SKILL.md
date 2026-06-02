@@ -1,6 +1,6 @@
 ---
 name: publish
-description: Describes the local publishing workflow for creating and pushing stable releases of minhthetus-cli from the master branch.
+description: Describes the local publishing workflow for creating and pushing stable releases of minhthetus-cli from the master branch. (after new features have been merged into master)
 ---
 
 # CLI Release Publishing Skill (Modular Developer-Agent Co-Design)
@@ -37,18 +37,18 @@ make get-latest-stable-version
 *(This outputs only the version number, e.g. `1.0.2`.)*
 
 ### Step 3: Analyze Code Changes & Generate Release Notes
-1.  **Check Documentation Integrity**: Check if the user wiki pages in `wiki/` and developer guides in `guide/` are fully up-to-date with your Go command implementations. If any command usage, flags, or internal configurations under `cmd/` were modified but not documented, **first run the `update-docs` skill** to synchronize the documentation files before proceeding with the release.
-2.  Run a git log check since the latest tag to see what commits are new:
+1.  Run a git log check since the latest tag to see what commits are new:
     ```bash
     git log v<latest-version>..HEAD --oneline
     ```
-3.  Check file diffs to understand the code changes.
-4.  Generate short, clear changelog entries in simple English that cover all main points. Categorize them into:
+2.  Check file diffs to understand the code changes.
+3.  Generate short, clear changelog entries in simple English that cover all main points. Categorize them into:
     *   `Added`
     *   `Changed`
     *   `Fixed`
     *   `Removed`
-5.  **PAUSE and Ask the User for Version Bump**: Output the current stable version and ask the user whether they want to bump the **minor** or **patch** version (major bumps are blocked). Once the user responds with their choice, calculate the `<new-version>` string accordingly (e.g. `v1.0.3` or `v1.1.0`).
+4.  **PAUSE and Ask the User for Version Bump**: Output the current stable version and ask the user whether they want to bump the **minor** or **patch** version (major bumps are blocked). Once the user responds with their choice, calculate the `<new-version>` string accordingly (e.g. `v1.0.3` or `v1.1.0`).
+5.  **Check Documentation Integrity**: Check if the user wiki pages in `wiki/` and developer guides in `guide/` are fully up-to-date with your Go command implementations. If any command usage, flags, or internal configurations under `cmd/` were modified but not documented, **run the `update-docs` skill** to synchronize the documentation files before release. Update `Latest Stable Version` and note version for new feature in command. 
 
 ### Step 4: Execute Non-Interactive Release
 Run the publishing script through the Makefile target, passing the calculated target version and generated changelog entries as the `ARGS` variable:
