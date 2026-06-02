@@ -47,5 +47,5 @@ If SourceTree is not installed, or if the `--cli` flag is provided:
 
 ## Version History
 
-* **First Stable Version Supported**: `v1.1.1`
-* **Latest Stable Version Update**: `v1.1.1`
+* **First Stable Version Supported**: `v1.2.0`
+* **Latest Stable Version Update**: `v1.2.0`
