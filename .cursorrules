@@ -1,0 +1,19 @@
+# minhthetus-cli AI Agent Rules
+
+## 🤖 CRITICAL SECURITY & SANDBOX SAFEGUARD
+> [!IMPORTANT]
+> **DO NOT** run raw "go build", "go run", "go test", or "go clean" directly!
+> 
+> The system sandboxing controller classifies the direct `go` compiler command as a dangerous utility and blocks it, prompting the user for confirmation every single time.
+> 
+> **ALWAYS** use the pre-approved `make` targets instead. The user has pre-approved these `make` commands, and they will execute immediately with zero prompts:
+> - **Build standard binary**: `make build`
+> - **Build developer debug binary**: `make build-dev`
+> - **Build & install globally**: `make install`
+> - **Clean project**: `rm -f minhthetus-cli`
+> - **Run/Test locally**: `./minhthetus-cli <args>`
+
+## Code Standards
+- **Language**: Go 1.25+
+- **Architecture**: Domain-driven directory hierarchy under `cmd/` for commands and `internal/` for shared logic.
+- **Zero-Dependency TUI**: Pre-built custom CLI prompt dialogs are available in `internal/ui/` (`Confirm`, `Choose`, `Input`). Do not introduce third-party libraries for prompt dialogues; use these built-in Bubble Tea wrappers.

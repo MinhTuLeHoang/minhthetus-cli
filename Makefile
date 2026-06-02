@@ -1,3 +1,14 @@
+# ==============================================================================
+# 🤖 IMPORTANT AI AGENT DEVELOPER SAFEGUARD:
+# DO NOT run raw "go build", "go run", "go test", or "go clean" directly!
+# The execution of direct "go" commands is blocked by the sandbox controller
+# and will prompt the user for permission each time.
+# Instead, ALWAYS use "make" targets to compile, install, and test:
+#   - Build binary:  make build
+#   - Build debug:   make build-dev
+#   - Run binary:    ./minhthetus-cli <args>
+# ==============================================================================
+
 .PHONY: build build-dev install setup-completion publish help
 
 BINARY_NAME=minhthetus-cli
