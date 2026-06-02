@@ -9,6 +9,7 @@
 * [[Git-Merge-Request]]
 * [[Git-Sync-Branch]]
 * [[Git-Tag-Dev-Stg]]
+* [[Git-Tree]]
 
 ### 🌐 Web Subcommands
 * [[Web-Build]]
