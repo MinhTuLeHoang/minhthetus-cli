@@ -2,7 +2,7 @@
 
 The `git tree` command provides an interactive and highly readable visualization of your repository's commit graph. 
 
-Depending on your environment, it will either openAtlassian SourceTree (managing windows cleanly) or render a beautiful ASCII graph in your terminal.
+Depending on your environment, it will either open Atlassian SourceTree or render a beautiful ASCII graph in your terminal.
 
 ## Usage
 
@@ -21,8 +21,7 @@ minhthetus-cli git tree [flags]
 ### 1. SourceTree Integration (macOS Default)
 If Atlassian SourceTree is installed on your Mac, running `minhthetus-cli git tree`:
 1. Checks for `/Applications/SourceTree.app` or its system registration.
-2. Uses AppleScript to close all other open repository/project windows in SourceTree to keep your screen tidy.
-3. Automatically opens the current repository in SourceTree using `open -a SourceTree .`.
+2. Automatically opens the current repository in SourceTree using `open -a SourceTree .`.
 
 ### 2. High-Performance Terminal Graph (Fallback/Forced)
 If SourceTree is not installed, or if the `--cli` flag is provided:
@@ -34,7 +33,7 @@ If SourceTree is not installed, or if the `--cli` flag is provided:
 
 ## Examples
 
-* **Open current repository in SourceTree (and close others)**:
+* **Open current repository in SourceTree**:
   ```bash
   minhthetus-cli git tree
   ```
@@ -48,4 +47,5 @@ If SourceTree is not installed, or if the `--cli` flag is provided:
 
 ## Version History
 
-*   **v1.0.3**: Introduced the `git tree` command with native SourceTree AppleScript automation and beautiful colorized ASCII fallback.
+* **First Stable Version Supported**: `v1.1.1`
+* **Latest Stable Version Update**: `v1.1.1`
