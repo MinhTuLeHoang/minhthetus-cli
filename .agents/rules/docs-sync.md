@@ -1,8 +1,4 @@
-# Antigravity Agent Rules & Guidelines
-
-This directory contains persistent instructions that the Antigravity agent automatically loads and adheres to during coding sessions in this repository.
-
-## 1. Automatic Documentation Synchronization
+# Automatic Documentation Synchronization
 
 Whenever you perform functional code modifications, updates, or feature additions in this repository (specifically Go files under `cmd/` or related logic/scripts):
 
