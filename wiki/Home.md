@@ -30,6 +30,7 @@ Use the sidebar on the right or the links below to explore specific features:
 
 ## ⚡ Setup & Onboarding
 
-To learn how to install and configure the CLI on your machine:
+To learn how to install, update, and configure the CLI on your machine:
 *   For installation instructions, see the repository [README](https://github.com/MinhTuLeHoang/minhthetus-cli#readme).
+*   For instructions on updating an existing installation, see [[Updating-the-CLI]].
 *   For shell completions, execute `minhthetus-cli setup-completion`.

@@ -66,6 +66,21 @@ minhthetus-cli version
 # Tab completion is automatically configured on first execution!
 ```
 
+## 🔄 Keeping Up-to-Date
+
+To update `minhthetus-cli` to the latest version, simply run the built-in update command:
+
+```bash
+minhthetus-cli update
+```
+
+This command automatically detects how you installed the CLI (Homebrew, Go, or Manual) and performs/guides you through the update. 
+
+> [!NOTE]
+> All local configurations and profiles stored in your `~/.minhthetus-cli/` folder are **fully preserved** and untouched during updates.
+
+For detailed manuals on updating or troubleshooting, please refer to the [[Updating the CLI|Updating-the-CLI]] wiki guide.
+
 ## 🛠 Usage Examples
 
 ```bash

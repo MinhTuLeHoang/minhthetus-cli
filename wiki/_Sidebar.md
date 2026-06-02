@@ -1,5 +1,6 @@
 ### 📖 General
 * [[Home]]
+* [[Updating-the-CLI]]
 
 ### 🐙 Git Subcommands
 * [[Git-Account]]
