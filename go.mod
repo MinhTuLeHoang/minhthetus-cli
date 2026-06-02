@@ -1,11 +1,3 @@
-// 🤖 IMPORTANT AI AGENT DEVELOPER SAFEGUARD:
-// DO NOT run raw "go build", "go run", "go test", or "go clean" directly!
-// Direct "go" commands are blocked by the sandbox and prompt the user for permission.
-// Instead, ALWAYS compile using the pre-approved "make" commands:
-//   - Build binary:  make build
-//   - Build debug:   make build-dev
-//   - Run binary:    ./minhthetus-cli <args>
-
 module github.com/MinhTuLeHoang/minhthetus-cli
 
 go 1.25.5
