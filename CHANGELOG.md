@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-06-02
+
+### Added
+- Added git tree subcommand to visualize the repository's commit graph (opens SourceTree on macOS, or renders colorized ASCII graph in terminal with --cli)
+- Added automatic developer documentation sync rules under .agents/rules/
+
+### Changed
+- Updated auto-complete options for the git tree subcommand
+
+### Fixed
+- Enforced AI compilation safety rules by migrating compiler safeguards
+
 ## [1.1.1] - 2026-06-01
 
 ### Changed
