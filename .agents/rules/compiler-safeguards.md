@@ -1,6 +1,4 @@
-# minhthetus-cli Workspace Rules
-
-This file defines workspace-scoped guidelines and rules for Google Antigravity AI agents operating in this repository.
+# Compiler & Sandbox Safeguard
 
 ## 🤖 COMPILER & SANDBOX SAFEGUARD
 *   **DO NOT** run raw `go build`, `go run`, `go test`, or `go clean` commands directly.
