@@ -32,7 +32,7 @@ minhthetus-cli web install --ci`,
 		trackCurrentRepo()
 
 		fmt.Printf("%s Detecting environment...\n\n", ui.InfoMessage(""))
-		pkgManager := getWebInfo()
+		pkgManager, nodeBinDir := getWebInfo()
 
 		if pkgManager == "" {
 			fmt.Printf("\n%s %s\n", ui.ErrorIcon, ui.RedStyle().Render("Failed to detect package manager."))
@@ -80,6 +80,8 @@ minhthetus-cli web install --ci`,
 				execCmd = exec.Command("yarn", "install")
 			}
 		}
+
+		prepareCmdEnv(execCmd, nodeBinDir)
 
 		execCmd.Stdout = os.Stdout
 		execCmd.Stderr = os.Stderr

@@ -12,7 +12,7 @@ import (
 	"github.com/MinhTuLeHoang/minhthetus-cli/internal/ui"
 )
 
-func getWebInfo() string {
+func getWebInfo() (string, string) {
 	// Step 1: Node version
 	var nodeVer string
 	if _, err := os.Stat(".nvmrc"); err == nil {
@@ -88,7 +88,83 @@ func getWebInfo() string {
 		}
 	}
 
-	return pkgManager
+	nodeBinDir := findNodeBinDir(nodeVer)
+	return pkgManager, nodeBinDir
+}
+
+func findNodeBinDir(nodeVer string) string {
+	if nodeVer == "" {
+		return ""
+	}
+	nvmDir := filepath.Join(os.Getenv("HOME"), ".nvm", "versions", "node")
+	if _, err := os.Stat(nvmDir); err != nil {
+		return ""
+	}
+
+	searchPrefix := nodeVer
+	if !strings.HasPrefix(searchPrefix, "v") {
+		searchPrefix = "v" + searchPrefix
+	}
+
+	entries, err := os.ReadDir(nvmDir)
+	if err != nil {
+		return ""
+	}
+
+	var bestMatch string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+
+		if name == searchPrefix {
+			bestMatch = name
+			break
+		}
+
+		if strings.HasPrefix(name, searchPrefix+".") || name == searchPrefix {
+			if bestMatch == "" || name > bestMatch {
+				bestMatch = name
+			}
+		}
+	}
+
+	if bestMatch != "" {
+		return filepath.Join(nvmDir, bestMatch, "bin")
+	}
+	return ""
+}
+
+func prepareCmdEnv(execCmd *exec.Cmd, nodeBinDir string) {
+	if nodeBinDir == "" {
+		return
+	}
+	env := os.Environ()
+	pathKey := "PATH"
+	for _, e := range env {
+		if strings.HasPrefix(strings.ToUpper(e), "PATH=") {
+			parts := strings.SplitN(e, "=", 2)
+			pathKey = parts[0]
+			break
+		}
+	}
+
+	pathVal := os.Getenv(pathKey)
+	newPath := fmt.Sprintf("%s=%s%c%s", pathKey, nodeBinDir, os.PathListSeparator, pathVal)
+
+	found := false
+	for i, e := range env {
+		if strings.HasPrefix(strings.ToUpper(e), "PATH=") {
+			env[i] = newPath
+			found = true
+			break
+		}
+	}
+	if !found {
+		env = append(env, newPath)
+	}
+	execCmd.Env = env
 }
 
 func trackCurrentRepo() {
