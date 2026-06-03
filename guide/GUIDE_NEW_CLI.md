@@ -47,7 +47,7 @@ func init() {
 
 After rebuilding, you can run the new command via:
 ```bash
-go build -o minhthetus-cli main.go
+make build-dev
 ./minhthetus-cli git my-subcommand
 ```
 
@@ -118,7 +118,7 @@ This passes the `-tags dev` compilation flag. Once compiled, you can access your
 ./minhthetus-cli debug
 ```
 
-In standard production builds (i.e., running `make build` or standard `go build`), these developer-only commands will not be compiled, keeping the production binary clean, lightweight, and completely secure.
+In standard production builds (i.e., running `make build`), these developer-only commands will not be compiled, keeping the production binary clean, lightweight, and completely secure.
 
 ## 5. Rebuilding
 
