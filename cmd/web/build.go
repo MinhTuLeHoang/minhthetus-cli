@@ -22,7 +22,7 @@ var BuildCmd = &cobra.Command{
 		trackCurrentRepo()
 
 		fmt.Printf("%s Detecting environment...\n", ui.InfoMessage(""))
-		pkgManager := getWebInfo()
+		pkgManager, nodeBinDir := getWebInfo()
 
 		if pkgManager == "" {
 			fmt.Printf("\n%s %s\n", ui.ErrorIcon, ui.RedStyle().Render("Failed to detect package manager."))
@@ -42,6 +42,8 @@ var BuildCmd = &cobra.Command{
 		case "yarn":
 			execCmd = exec.Command("yarn", append([]string{"run", "build"}, args...)...)
 		}
+
+		prepareCmdEnv(execCmd, nodeBinDir)
 
 		err := showSpinner(buildMsg, execCmd)
 		duration := getDuration(start)
