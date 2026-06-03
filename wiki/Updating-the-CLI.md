@@ -15,6 +15,7 @@ minhthetus-cli update
 ```
 
 ### What it does:
+- **Version Check**: First queries the latest version online (from GitHub raw files and fallback API) to check if an update is needed. If you are already up to date, it informs you and stops, avoiding redundant downloads/compilations.
 - **Homebrew**: Automatically runs `brew upgrade minhthetus-cli` for you.
 - **Go toolchain**: Automatically runs `go install github.com/MinhTuLeHoang/minhthetus-cli@latest` to compile the newest version.
 - **Manual Build**: If you are inside the cloned repository, it will offer to run `git pull && make install`. If you are outside the repository, it will guide you on what to do.
@@ -86,6 +87,10 @@ sudo make install
 
 ---
 
-## 📅 Version History
+## Version History
 
-- **v1.3.0** (Current): Introduced the built-in `update` command and native update automation workflows.
+* **First Stable Version Supported**: `v1.3.0`
+* **Latest Stable Version Update**: `v1.3.2`
+
+- **v1.3.2**: Added pre-update version checking logic to verify if an update is actually needed before performing the update.
+- **v1.3.0**: Introduced the built-in `update` command and native update automation workflows.

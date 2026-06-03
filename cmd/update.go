@@ -1,13 +1,122 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/MinhTuLeHoang/minhthetus-cli/internal/ui"
 	"github.com/spf13/cobra"
 )
+
+// fetchLatestVersion queries GitHub for the latest release tag
+func fetchLatestVersion() (string, error) {
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	// Method 1: Try fetching the raw version.go from the master branch on GitHub (reliable, no API rate limits)
+	req, err := http.NewRequest("GET", "https://raw.githubusercontent.com/MinhTuLeHoang/minhthetus-cli/master/internal/config/version.go", nil)
+	if err == nil {
+		req.Header.Set("User-Agent", "minhthetus-cli")
+		resp, err := client.Do(req)
+		if err == nil && resp.StatusCode == http.StatusOK {
+			defer resp.Body.Close()
+			bodyBytes, err := io.ReadAll(resp.Body)
+			if err == nil {
+				content := string(bodyBytes)
+				// Find Version = "X.Y.Z"
+				startIdx := strings.Index(content, "Version = \"")
+				if startIdx != -1 {
+					content = content[startIdx+11:]
+					endIdx := strings.Index(content, "\"")
+					if endIdx != -1 {
+						return content[:endIdx], nil
+					}
+				}
+			}
+		}
+	}
+
+	// Method 2: Fallback to GitHub Releases API
+	req, err = http.NewRequest("GET", "https://api.github.com/repos/MinhTuLeHoang/minhthetus-cli/releases/latest", nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "minhthetus-cli")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("HTTP status %d", resp.StatusCode)
+	}
+
+	var data struct {
+		TagName string `json:"tag_name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return "", err
+	}
+
+	return data.TagName, nil
+}
+
+// parseVersion converts a version string like "v1.3.1" or "1.3.1" into [1, 3, 1]
+func parseVersion(v string) []int {
+	v = strings.TrimPrefix(v, "v")
+	parts := strings.Split(v, ".")
+	ints := make([]int, 0, len(parts))
+	for _, p := range parts {
+		if idx := strings.Index(p, "-"); idx != -1 {
+			p = p[:idx]
+		}
+		val, err := strconv.Atoi(p)
+		if err != nil {
+			val = 0
+		}
+		ints = append(ints, val)
+	}
+	return ints
+}
+
+// isUpToDate returns true if current >= latest
+func isUpToDate(current, latest string) bool {
+	currParts := parseVersion(current)
+	lateParts := parseVersion(latest)
+
+	maxLen := len(currParts)
+	if len(lateParts) > maxLen {
+		maxLen = len(lateParts)
+	}
+
+	for i := 0; i < maxLen; i++ {
+		currVal := 0
+		if i < len(currParts) {
+			currVal = currParts[i]
+		}
+		lateVal := 0
+		if i < len(lateParts) {
+			lateVal = lateParts[i]
+		}
+		if currVal > lateVal {
+			return true
+		}
+		if currVal < lateVal {
+			return false
+		}
+	}
+	return true
+}
 
 // updateCmd represents the update command
 var updateCmd = &cobra.Command{
@@ -27,6 +136,36 @@ var updateCmd = &cobra.Command{
 
 		method := detectInstallMethod(exePath)
 		fmt.Printf("⏳ Detected %s installation.\n", method)
+
+		// 1b. Check if update is needed
+		fmt.Println("⏳ Checking for updates...")
+		currentVer := getVersionString()
+		latestVer, err := fetchLatestVersion()
+		if err == nil {
+			if isUpToDate(currentVer, latestVer) {
+				fmt.Printf("✅ minhthetus-cli is already up-to-date (current version: %s, latest version: %s).\n", currentVer, latestVer)
+				return
+			}
+			fmt.Printf("✨ A new version is available: %s (current: %s)\n", latestVer, currentVer)
+		} else {
+			// If online check fails, and it's Homebrew, we can try 'brew outdated' as a local/fallback check
+			if method == Homebrew {
+				fmt.Println("⏳ Checking local Homebrew packages...")
+				outdatedCmd := exec.Command("brew", "outdated", "minhthetus-cli")
+				out, outdatedErr := outdatedCmd.Output()
+				if outdatedErr == nil && len(strings.TrimSpace(string(out))) == 0 {
+					fmt.Println("✅ minhthetus-cli is already up-to-date via Homebrew.")
+					return
+				}
+			}
+
+			fmt.Printf("⚠️  Could not retrieve latest version information online: %v\n", err)
+			proceed, confirmErr := ui.Confirm("Would you like to force the update process anyway?", 0, false)
+			if confirmErr != nil || !proceed {
+				fmt.Println("❌ Update cancelled.")
+				return
+			}
+		}
 
 		// 2. Perform update based on method
 		switch method {
