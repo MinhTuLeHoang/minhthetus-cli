@@ -15,6 +15,9 @@ func runCmd(name string, args ...string) (string, error) {
 }
 
 func main() {
+	// Fetch latest updates and tags from origin
+	_, _ = runCmd("git", "fetch", "origin")
+
 	// Query git tags
 	tagsOut, err := runCmd("git", "tag", "-l", "v*")
 	if err != nil {

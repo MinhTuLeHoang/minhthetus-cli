@@ -1,5 +1,7 @@
 # Welcome to the minhthetus-cli Wiki!
 
+![Version](https://img.shields.io/badge/version-v1.3.2-green) ![Language](https://img.shields.io/badge/language-Go-00ADD8.svg?style=flat&logo=go) ![License](https://img.shields.io/badge/license-MIT-blue)
+
 A professional, high-performance CLI tool designed for automation and developer productivity, written natively in Go.
 
 This wiki provides detailed technical guides and user references for every subcommand available in the CLI.
