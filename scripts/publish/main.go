@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -71,20 +72,6 @@ func main() {
 		// Fully interactive human developer mode
 		fmt.Println("🚀 Starting Interactive custom publishing checklist (Protected Master Compliant)...")
 
-		// 1. Call sync_master.go script to check branch and pull updates
-		fmt.Println("  ⏳ Calling master sync script...")
-		syncOut, err := runCmd("go", "run", "scripts/publish/sync_master.go")
-		if err != nil {
-			fmt.Printf("❌ Error running master sync script: %s\n", syncOut)
-			os.Exit(1)
-		}
-		// Print output of the sync script indented
-		lines := strings.Split(syncOut, "\n")
-		for _, line := range lines {
-			if strings.TrimSpace(line) != "" {
-				fmt.Printf("    %s\n", line)
-			}
-		}
 
 		// 2. Report stable version discovered earlier
 		fmt.Printf("🔍 Detected latest stable tag: v%s\n", latestStable)
@@ -130,15 +117,13 @@ func main() {
 		}
 	}
 
-	// 5. Create local release branch
-	releaseBranch := fmt.Sprintf("release/v%s", nextVersion)
-	fmt.Printf("  ⏳ Creating local release branch '%s'...\n", releaseBranch)
-	checkoutOut, err := runCmd("git", "checkout", "-b", releaseBranch)
-	if err != nil {
-		fmt.Printf("❌ Error creating release branch: %s\n", checkoutOut)
+	// 5. Detect current branch
+	currentBranch, err := runCmd("git", "branch", "--show-current")
+	if err != nil || currentBranch == "" {
+		fmt.Printf("❌ Error detecting current branch: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("  ✓ Switched to release branch '%s'.\n", releaseBranch)
+	fmt.Printf("  ✓ Using current branch '%s' for publishing...\n", currentBranch)
 
 	// 6. Update Version Constants in internal/config/version.go
 	buildDate := time.Now().Format("2006-01-02")
@@ -156,19 +141,20 @@ const (
 	err = os.WriteFile(versionGoPath, []byte(versionContent), 0644)
 	if err != nil {
 		fmt.Printf("❌ Error updating version constant file: %v\n", err)
-		runCmd("git", "checkout", "master")
-		runCmd("git", "branch", "-D", releaseBranch)
 		os.Exit(1)
 	}
 	fmt.Println("  ✓ central version constants updated in internal/config/version.go.")
+
+	// Update wiki documentation version references
+	if err := updateWikiFiles(nextVersion); err != nil {
+		fmt.Printf("⚠️ Warning: %v\n", err)
+	}
 
 	// 8. Read existing CHANGELOG.md and append the new version section
 	changelogPath := "CHANGELOG.md"
 	existingChangelog, err := os.ReadFile(changelogPath)
 	if err != nil {
 		fmt.Printf("❌ Error reading CHANGELOG.md: %v\n", err)
-		runCmd("git", "checkout", "master")
-		runCmd("git", "branch", "-D", releaseBranch)
 		os.Exit(1)
 	}
 
@@ -204,15 +190,13 @@ const (
 	err = os.WriteFile(changelogPath, []byte(updatedChangelog), 0644)
 	if err != nil {
 		fmt.Printf("❌ Error updating CHANGELOG.md: %v\n", err)
-		runCmd("git", "checkout", "master")
-		runCmd("git", "branch", "-D", releaseBranch)
 		os.Exit(1)
 	}
 	fmt.Println("  ✓ CHANGELOG.md successfully updated with new release notes.")
 
-	// 9. Commit changes to release branch
-	fmt.Println("\n💾 Committing changes to local release branch...")
-	_, err = runCmd("git", "add", versionGoPath, changelogPath)
+	// 9. Commit changes to current branch
+	fmt.Println("\n💾 Committing changes to local branch...")
+	_, err = runCmd("git", "add", versionGoPath, changelogPath, "wiki/Home.md", "wiki/_Footer.md")
 	if err != nil {
 		fmt.Printf("❌ Error staging files: %v\n", err)
 		os.Exit(1)
@@ -224,64 +208,19 @@ const (
 		fmt.Printf("❌ Error committing files: %s\n", commitOut)
 		os.Exit(1)
 	}
-	fmt.Printf("  ✓ Git commit created on branch %s: %s\n", releaseBranch, commitMsg)
+	fmt.Printf("  ✓ Git commit created on branch %s: %s\n", currentBranch, commitMsg)
 
-	// 10. Push release branch to origin
-	fmt.Printf("\n🚀 Pushing release branch '%s' to origin remote...\n", releaseBranch)
-	pushOut, err := runCmd("git", "push", "origin", releaseBranch)
+	// 10. Push current branch to origin
+	fmt.Printf("\n🚀 Pushing branch '%s' to origin remote...\n", currentBranch)
+	pushOut, err := runCmd("git", "push", "origin", currentBranch)
 	if err != nil {
-		fmt.Printf("❌ Error pushing release branch to origin: %s\n", pushOut)
+		fmt.Printf("❌ Error pushing branch to origin: %s\n", pushOut)
 		fmt.Println("⚠️ Please resolve remote connection and manually push the branch.")
 		os.Exit(1)
 	}
-	fmt.Println("  ✓ Release branch successfully pushed to remote.")
+	fmt.Println("  ✓ Branch successfully pushed to remote.")
 
-	// 11. Create Pull Request using gh CLI
-	fmt.Println("\n🔀 Creating Pull Request on GitHub...")
-	prTitle := fmt.Sprintf("[bump version] v%s", nextVersion)
-	prBody := fmt.Sprintf("Automated release documentation bump for version v%s.", nextVersion)
-	prOut, err := runCmd("gh", "pr", "create", "--title", prTitle, "--body", prBody, "--base", "master", "--head", releaseBranch, "--assignee", "@me", "--label", "documentation")
-	if err != nil {
-		fmt.Printf("❌ Error creating Pull Request via gh CLI: %s\n", prOut)
-		fmt.Println("⚠️ Please open a Pull Request manually on GitHub and merge it to master.")
-		os.Exit(1)
-	}
-	fmt.Printf("  ✓ Pull Request successfully created on GitHub!\n")
-
-	// 12. Auto-merge Pull Request using gh CLI
-	fmt.Println("\n🤝 Merging Pull Request and deleting remote branch...")
-	// Wait a brief second for GitHub API processing
-	time.Sleep(2 * time.Second)
-	mergeOut, err := runCmd("gh", "pr", "merge", releaseBranch, "--merge", "--delete-branch", "--admin")
-	if err != nil {
-		fmt.Println("  ⏳ Standard merge attempt...")
-		mergeOut, err = runCmd("gh", "pr", "merge", releaseBranch, "--merge", "--delete-branch")
-	}
-
-	if err != nil {
-		fmt.Printf("❌ Error merging Pull Request via gh CLI: %s\n", mergeOut)
-		fmt.Println("⚠️ Pull Request was created but could not be auto-merged. Please go to GitHub, merge it manually, then run:")
-		fmt.Printf("👉 git checkout master && git pull origin master && git tag -a v%s -m \"Release v%s\" && git push origin v%s\n", nextVersion, nextVersion, nextVersion)
-		os.Exit(1)
-	}
-	fmt.Println("  ✓ Pull Request merged successfully, and remote branch deleted!")
-
-	// 13. Back to master locally and pull updates
-	fmt.Println("\n🔄 Syncing local master branch...")
-	checkoutMasterOut, err := runCmd("git", "checkout", "master")
-	if err != nil {
-		fmt.Printf("❌ Error switching back to master: %s\n", checkoutMasterOut)
-		os.Exit(1)
-	}
-	
-	pullMasterOut, err := runCmd("git", "pull", "origin", "master")
-	if err != nil {
-		fmt.Printf("❌ Error pulling merged changes to local master: %s\n", pullMasterOut)
-		os.Exit(1)
-	}
-	fmt.Println("  ✓ Local master successfully updated with release changes.")
-
-	// 13.5 Compile local build to verify correctness and update local binary
+	// 11. Compile local build to verify correctness and update local binary
 	fmt.Println("\n🛠 Compiling local developer build...")
 	buildOut, err := runCmd("make", "build-dev")
 	if err != nil {
@@ -290,69 +229,12 @@ const (
 	}
 	fmt.Println("  ✓ Local binary successfully compiled and shell completion configured.")
 
-	// 14. Create and push annotated tag
-	tagVersion := "v" + nextVersion
-	tagMsg := fmt.Sprintf("Release %s", tagVersion)
-	fmt.Printf("\n🏷 Tagging version %s locally...\n", tagVersion)
-	tagOut, err := runCmd("git", "tag", "-a", tagVersion, "-m", tagMsg)
-	if err != nil {
-		fmt.Printf("❌ Error tagging git version locally: %s\n", tagOut)
-		os.Exit(1)
-	}
-	fmt.Printf("  ✓ Local tag %s created.\n", tagVersion)
-
-	fmt.Printf("🚀 Pushing tag %s to origin remote...\n", tagVersion)
-	pushTagOut, err := runCmd("git", "push", "origin", tagVersion)
-	if err != nil {
-		fmt.Printf("❌ Error pushing tag to remote: %s\n", pushTagOut)
-		os.Exit(1)
-	}
-	fmt.Println("  ✓ Tag successfully pushed to GitHub.")
-
-	// 14.5 Auto-detect Wiki documentation updates and deploy
-	wikiUpdated := false
-	fmt.Println("\n📖 Auto-detecting Wiki documentation updates...")
-	diffCmd := exec.Command("git", "diff", "v"+latestStable+"..HEAD", "--name-only")
-	diffBytes, err := diffCmd.CombinedOutput()
-	if err == nil && strings.Contains(string(diffBytes), "wiki/") {
-		fmt.Println("  📝 Wiki changes detected in this release. Running deploy-wiki script...")
-		deployOut, err := runCmd("bash", "scripts/deploy-wiki.sh")
-		if err != nil {
-			fmt.Printf("⚠️ Warning: deploy-wiki script failed: %s\n", deployOut)
-		} else {
-			// Print output of the deploy script indented
-			lines := strings.Split(deployOut, "\n")
-			for _, line := range lines {
-				if strings.TrimSpace(line) != "" {
-					fmt.Printf("    %s\n", line)
-				}
-			}
-			fmt.Println("  ✓ Wiki documentation successfully synchronized.")
-			wikiUpdated = true
-		}
-	} else {
-		fmt.Println("  🕊 No Wiki documentation changes detected in this release.")
-	}
-
-	// 15. Delete local release branch
-	fmt.Printf("\n🧹 Deleting local branch '%s'...\n", releaseBranch)
-	delOut, err := runCmd("git", "branch", "-D", releaseBranch)
-	if err != nil {
-		fmt.Printf("⚠️ Warning: Could not delete local release branch: %s\n", delOut)
-	} else {
-		fmt.Println("  ✓ Local release branch deleted.")
-	}
-
-	// 16. Complete
-	fmt.Println("\n🎉 Release is successfully complete!")
+	// 12. Complete
+	fmt.Println("\n🎉 Release preparation is successfully complete!")
 	fmt.Println("==========================================================================")
-	fmt.Printf("  ✓ Released Version: %s\n", tagVersion)
-	fmt.Printf("  ✓ Synced local master branch.\n")
+	fmt.Printf("  ✓ Updated version to: v%s\n", nextVersion)
+	fmt.Printf("  ✓ Committed and pushed version changes to %s.\n", currentBranch)
 	fmt.Printf("  ✓ Compiled local dev build with updated version.\n")
-	fmt.Printf("  ✓ Pushed tag %s live to GitHub.\n", tagVersion)
-	if wikiUpdated {
-		fmt.Println("  ✓ Synchronized Wiki documentation live to GitHub.")
-	}
 	fmt.Println("==========================================================================")
 }
 
@@ -374,4 +256,47 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	return out.Sync()
+}
+
+func updateWikiFiles(nextVersion string) error {
+	// 1. Update wiki/Home.md
+	homePath := "wiki/Home.md"
+	homeBytes, err := os.ReadFile(homePath)
+	if err != nil {
+		return fmt.Errorf("failed to read wiki/Home.md: %w", err)
+	}
+	
+	// Replace version badge url in wiki/Home.md
+	// e.g., https://img.shields.io/badge/version-v1.3.2-green
+	reHome := regexp.MustCompile(`(https://img\.shields\.io/badge/version-v)\d+\.\d+\.\d+`)
+	updatedHome := reHome.ReplaceAllString(string(homeBytes), "${1}"+nextVersion)
+	
+	err = os.WriteFile(homePath, []byte(updatedHome), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write wiki/Home.md: %w", err)
+	}
+	fmt.Println("  ✓ wiki/Home.md version badge updated.")
+
+	// 2. Update wiki/_Footer.md
+	footerPath := "wiki/_Footer.md"
+	footerBytes, err := os.ReadFile(footerPath)
+	if err != nil {
+		return fmt.Errorf("failed to read wiki/_Footer.md: %w", err)
+	}
+	
+	// Replace version badge url, release tag url, and alt text in wiki/_Footer.md
+	reFooterTag := regexp.MustCompile(`(releases/tag/v)\d+\.\d+\.\d+`)
+	reFooterBadge := regexp.MustCompile(`(badge/version-v)\d+\.\d+\.\d+`)
+	reFooterAlt := regexp.MustCompile(`(alt="v)\d+\.\d+\.\d+(")`)
+	
+	updatedFooter := reFooterTag.ReplaceAllString(string(footerBytes), "${1}"+nextVersion)
+	updatedFooter = reFooterBadge.ReplaceAllString(updatedFooter, "${1}"+nextVersion)
+	updatedFooter = reFooterAlt.ReplaceAllString(updatedFooter, "${1}"+nextVersion+"${2}")
+	
+	err = os.WriteFile(footerPath, []byte(updatedFooter), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write wiki/_Footer.md: %w", err)
+	}
+	fmt.Println("  ✓ wiki/_Footer.md version badge/tag updated.")
+	return nil
 }
