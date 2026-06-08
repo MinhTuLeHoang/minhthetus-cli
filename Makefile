@@ -43,10 +43,10 @@ publish:
 	@go run scripts/publish/main.go $(ARGS)
 
 sync-master:
-	@go run scripts/publish/sync_master.go
+	@go run scripts/publish/sync_master/main.go
 
 get-latest-stable-version:
-	@go run scripts/publish/get_version.go
+	@go run scripts/publish/get_version/main.go
 
 deploy-wiki:
 	@bash scripts/deploy-wiki.sh

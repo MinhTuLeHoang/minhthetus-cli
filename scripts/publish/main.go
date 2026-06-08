@@ -48,7 +48,7 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 
 	// Discover latest stable version first so it is available globally
-	latestStable, err := runCmd("go", "run", "scripts/publish/get_version.go")
+	latestStable, err := runCmd("go", "run", "scripts/publish/get_version/main.go")
 	if err != nil {
 		fmt.Printf("❌ Error retrieving stable version: %s\n", latestStable)
 		os.Exit(1)

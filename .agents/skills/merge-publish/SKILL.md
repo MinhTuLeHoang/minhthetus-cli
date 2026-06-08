@@ -1,5 +1,5 @@
 ---
-name: publish
+name: merge-publish
 description: Describes the local publishing workflow for creating and pushing stable releases of minhthetus-cli from the master branch. (after new features have been merged into master)
 ---
 
