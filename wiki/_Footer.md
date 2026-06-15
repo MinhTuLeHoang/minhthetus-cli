@@ -1,7 +1,7 @@
 ***
 <p align="center">
-  <a href="https://github.com/MinhTuLeHoang/minhthetus-cli/releases/tag/v1.3.2">
-    <img src="https://img.shields.io/badge/version-v1.3.2-blue?style=for-the-badge" alt="v1.3.2">
+  <a href="https://github.com/MinhTuLeHoang/minhthetus-cli/releases/tag/v1.3.3">
+    <img src="https://img.shields.io/badge/version-v1.3.3-blue?style=for-the-badge" alt="v1.3.3">
   </a>
 </p>
 <p align="center">
