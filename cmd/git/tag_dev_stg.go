@@ -125,16 +125,41 @@ func init() {
 	})
 }
 
+// compareVersions compares two semantic version strings numerically.
+// Returns < 0 if v1 < v2, 0 if v1 == v2, > 0 if v1 > v2.
+func compareVersions(v1, v2 string) int {
+	parts1 := strings.Split(v1, ".")
+	parts2 := strings.Split(v2, ".")
+
+	for i := 0; i < len(parts1) || i < len(parts2); i++ {
+		var n1, n2 int
+		if i < len(parts1) {
+			fmt.Sscanf(parts1[i], "%d", &n1)
+		}
+		if i < len(parts2) {
+			fmt.Sscanf(parts2[i], "%d", &n2)
+		}
+		if n1 != n2 {
+			return n1 - n2
+		}
+	}
+	return 0
+}
+
 func getLatestTag(pattern string) string {
 	out, _ := exec.Command("git", "tag", "-l", pattern).Output()
 	tags := strings.Split(strings.TrimSpace(string(out)), "\n")
 	if len(tags) == 0 || (len(tags) == 1 && tags[0] == "") {
 		return ""
 	}
-	sort.Strings(tags) // Basic sort, legacy used sort -V (version sort)
-	// For better version sorting, we'd need a custom sorter, but let's stick to this for now
+	sort.Slice(tags, func(i, j int) bool {
+		vi := extractVersion(tags[i])
+		vj := extractVersion(tags[j])
+		return compareVersions(vi, vj) < 0
+	})
 	return tags[len(tags)-1]
 }
+
 
 func extractVersion(tag string) string {
 	re := regexp.MustCompile(`[0-9.]+`)
