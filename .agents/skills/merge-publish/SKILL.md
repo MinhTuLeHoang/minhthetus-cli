@@ -37,7 +37,7 @@ make get-latest-stable-version
     *   `Changed`
     *   `Fixed`
     *   `Removed`
-4.  **PAUSE and Ask the User for Version Bump**: Output the current stable version and ask the user whether they want to bump the **minor** or **patch** version (major bumps are blocked). Once the user responds with their choice, calculate the `<new-version>` string accordingly (e.g. `v1.0.3` or `v1.1.0`).
+4. Version Bump: **Note: major bumps are blocked**. If user has provide target version or bump type (**patch**, **minor**), calculate the `<new-version>` string accordingly (e.g. `v1.0.3` or `v1.1.0`). Otherwise, if user hasn't provide any, **PAUSE and Ask the User**: Output the current stable version and ask the user whether they want to bump the **minor** or **patch** version.
 5.  **Check Documentation Integrity**: Check if the user wiki pages in `wiki/` and developer guides in `guide/` are fully up-to-date with your Go command implementations. If any command usage, flags, or internal configurations under `cmd/` were modified but not documented, **run the `update-docs` skill** to synchronize the documentation files before release. Update `Latest Stable Version` and note version for new feature in command.
 
 **IMPORTANT:** If has update `wiki/` or `guide/`, request review from me, and wait for me to allow continue.
