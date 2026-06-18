@@ -5,9 +5,9 @@ description: Updates the CLI user documentation in 'wiki/' and developer referen
 
 # Update CLI Documentation Skill
 
-**Only use this skill when trigger from `merge-publish` SKILL** If trigger it manually -> only update dev docs (in `/guide`), else update both dev docs and user wiki (in `/wiki`)
+**WHEN TO USE:** Only run this skill when trigger from `merge-publish` SKILL or I prompt directly in chat.
 
-This skill is used to synchronize the documentation with the latest native Go Cobra command implementations.
+**WHAT IS THIS SKILL:** This skill is used to synchronize the documentation with the latest native Go Cobra command implementations.
 
 ## Instructions
 
@@ -35,7 +35,7 @@ This skill is used to synchronize the documentation with the latest native Go Co
     *   Use H2 for 'Usage', 'Options', 'Flow', and 'Version History'.
     *   Make links to other wiki pages using flat relative paths or bracket notation (e.g., `[[Git-Account]]`).
 5.  **Version controll**:
-    *   **Section "Flow"**: If has new feature on existed command, update the flow with supported version
+    *   **Section "Flow"**: If has new feature or bugs on existed command, update the flow with supported version
     *   **Version History**: If has new feature on existed command, update "Latest Stable Version Update" and update changelod under "First Stable Version Supported" and "Latest Stable Version Update". Ex:
     ```markdown
     ## Version History
@@ -53,4 +53,4 @@ This skill is used to synchronize the documentation with the latest native Go Co
     * **First Stable Version Supported**: `v1.3.0`
     * **Latest Stable Version Update**: `v1.3.0`
     ```
-6.  **Output**: Provide a summary of updated documentation files.
+6.  **Output**: Read `./examples/Git-Command-A.md` for wiki example, then create/update documentation files.
