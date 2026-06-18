@@ -9,15 +9,14 @@ minhthetus-cli utils genQR <content> [options]
 
 ## Options
 
-| Option | Description |
-| :--- | :--- |
-| `-m`, `--mode <type>` | Generation mode: `api` (default) or `self-implement`. |
+*   `-m, --mode <type>`: Generation mode: `api` (default) or `self-implement`.
+*   `-h, --help`: Show the help message and exit.
 
 ## Flow
 
 1.  **Parse Arguments**:
-    *   Reads the content to be encoded.
-    *   Determines if the external API or local engine should be used via the `--mode` flag.
+    *   Reads the content to be encoded from the positional argument.
+    *   Determines the generation mode from the `--mode` flag.
 2.  **Mode Resolution**:
     *   **API Mode (Default)**:
         *   Constructs a request to `https://qrenco.de/`.
@@ -26,9 +25,10 @@ minhthetus-cli utils genQR <content> [options]
         *   Encodes the data into a QR matrix using a local implementation (no external dependencies).
         *   Renders the matrix using "Half-Block" characters for a perfect 1:1 square aspect ratio.
 3.  **Display Output**:
-    *   Prints the QR code to the standard output.
+    *   Prints the QR code to standard output.
     *   Provides a success message upon completion.
 
 ## Version History
+
 * **First Stable Version Supported**: `v1.0.0`
 * **Latest Stable Version Update**: `v1.0.0`

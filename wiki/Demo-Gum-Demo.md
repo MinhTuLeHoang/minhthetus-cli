@@ -10,13 +10,20 @@ Demonstrates the enhanced UI capabilities provided by Charmbracelet Bubble Tea /
 minhthetus-cli debug tui-demo
 ```
 
-## Features Demonstrated
-*   **Stylized Headers**: Custom layout borders, colors, and padding.
-*   **Interactive Choices**: TUI interactive selection lists.
-*   **User Input**: Native multi-line text input fields.
-*   **Spinners**: TUI activity indicators for background tasks.
-*   **Styled Output**: Custom colors and symbols for status reporting.
+## Options
+
+*   `-h, --help`: Show the help message and exit.
+
+## Flow
+
+1.  **Run Demo**:
+    *   Demonstrates stylized headers, borders, colors, and padding.
+    *   Runs interactive TUI selection lists.
+    *   Displays native multi-line text input fields.
+    *   Shows TUI activity spinners for background tasks.
+    *   Prints custom colors and symbols for status reporting.
 
 ## Version History
+
 * **First Stable Version Supported**: `v1.0.0`
 * **Latest Stable Version Update**: `v1.0.0`

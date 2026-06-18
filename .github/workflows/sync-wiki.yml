@@ -1,0 +1,36 @@
+name: Sync Wiki
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  sync-wiki:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout minhthetus-cli
+        uses: actions/checkout@v4
+
+      - name: Clone Wiki repository
+        run: |
+          git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/MinhTuLeHoang/minhthetus-cli.wiki.git wiki-repo
+
+      - name: Sync wiki files
+        run: |
+          find wiki-repo -maxdepth 1 -not -name '.git' -not -name "$(basename wiki-repo)" -exec rm -rf {} +
+          cp -R wiki/* wiki-repo/
+
+      - name: Commit and push
+        run: |
+          cd wiki-repo
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "docs: sync wiki with latest codebase updates"
+            git push origin master
+            echo "✅ Wiki successfully synchronized!"
+          else
+            echo "🕊 No documentation changes detected. Wiki is already up to date."
+          fi
