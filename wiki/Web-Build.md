@@ -1,6 +1,6 @@
 # Web Project Builder
 
-Builds the web project with automatic environment detection and progress feedback.
+Detects the environment and runs the build script using the appropriate package manager.
 
 ## Usage
 ```bash
@@ -8,26 +8,25 @@ minhthetus-cli web build [options] [-- [args]]
 ```
 
 ## Options
+
 *   `[args]`: Pass additional arguments to the build command.
+*   `-h, --help`: Show the help message and exit.
 
 ## Flow
 
 1.  **Environment Detection**:
-    *   Detects the package manager (pnpm, npm, or yarn) in the local repository.
-2.  **Background Execution**:
-    *   Starts the build command in the background:
-        *   **pnpm**: `pnpm run build`
-        *   **npm**: `npm run build`
-        *   **yarn**: `yarn run build`
-    *   Redirects output to a temporary log file.
-3.  **User Feedback**:
-    *   Displays a spinner while the background build process is running.
-4.  **Completion**:
-    *   Waits for the background process to finish.
-    *   Checks the exit code.
-    *   Reports success or failure and displays the total duration.
-    *   Cleans up the temporary log file.
+    *   Detects the package manager (pnpm, npm, or yarn) in the current directory.
+    *   Exits with error if no package manager is detected.
+2.  **Execution**:
+    *   Starts the build command using a spinner for progress feedback:
+        *   **pnpm**: `pnpm run build [args]`
+        *   **npm**: `npm run build [args]`
+        *   **yarn**: `yarn run build [args]`
+3.  **Completion**:
+    *   Reports success or failure with the total elapsed duration.
+    *   Exits with error if the build fails.
 
 ## Version History
+
 * **First Stable Version Supported**: `v1.0.0`
 * **Latest Stable Version Update**: `v1.0.0`
