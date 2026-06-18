@@ -126,7 +126,4 @@ The script will automatically update the version constants, prepend the changelo
      git tag -a v<new-version> -m "Release v<new-version> - <Merged-PR-URL>"
      git push origin v<new-version>
      ```
-   - Sync the wiki documentation if wiki updates are present:
-     ```bash
-     bash scripts/deploy-wiki.sh
-     ```
+   - Wiki documentation is auto-synced to GitHub Wiki via the `sync-wiki` GitHub Actions workflow when a `v*` tag is pushed. No manual step needed.
