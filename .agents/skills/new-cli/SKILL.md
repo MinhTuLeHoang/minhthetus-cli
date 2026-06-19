@@ -45,6 +45,7 @@ Use this skill when you are asked to add a new command, sub-command, or feature 
         ```
 
 4.  **Use UI Helpers & Icons**:
+    *   Read `internal/ui/constants.go` and use colors and icons for printing log, to make it more eye-catching.
     *   The CLI uses a zero-dependency architecture. For all interactive UI components, use the pre-built Bubble Tea wrapper functions inside the `internal/ui` package:
         *   **Confirmations**: `ui.Confirm(prompt string, timeout time.Duration, defaultVal bool)` (e.g. `internal/ui/confirm.go`).
         *   **Filtering Selectors**: `ui.Choose(prompt string, options []string)` (e.g. `internal/ui/select.go`).
