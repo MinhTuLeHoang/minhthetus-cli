@@ -17,5 +17,9 @@
 * [[Web-Install]]
 * [[Web-Start]]
 
+### 💻 System Subcommands
+* [[Sys-Size]]
+
 ### 🛠 Other
 * [[Remote-Scripts-Utils-GenQR]]
+
