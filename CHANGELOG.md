@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.4] - 2026-06-20
+
+### Added
+- sys size command to list all files and folders in the current directory, sorted by size descending
+
+### Changed
+- updated CLI developer guide with custom logs styling recommendations
+
 ## [1.3.3] - 2026-06-15
 
 ### Added
