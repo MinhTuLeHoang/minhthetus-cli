@@ -28,6 +28,9 @@ To get started or contribute, please refer to the following documentation:
 
 ### Option 1: Install via Homebrew (Recommended)
 ```bash
+# Trust the tap (Required for Homebrew 6.0.0+)
+brew trust minhtulehoang/tap
+
 # Install directly using Homebrew shorthand (automatically taps and installs)
 brew install MinhTuLeHoang/tap/minhthetus-cli
 ```
