@@ -31,9 +31,6 @@ var registerDebug func() = nil
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	// Auto-setup completion (silent)
-	SetupCompletion(true)
-
 	// Register commands from sub-packages
 	rootCmd.AddCommand(git.Cmd)
 	rootCmd.AddCommand(sys.Cmd)
@@ -49,6 +46,10 @@ func Execute() {
 
 	// Custom Help (Phase 5)
 	ui.SetCustomHelp(rootCmd)
+
+	// Auto-setup completion (silent)
+	// We run this after registering all subcommands to ensure they are included in the generated completions
+	SetupCompletion(true, false)
 
 	// Custom Error Handling
 	rootCmd.SilenceErrors = true

@@ -112,6 +112,14 @@ var uninstallCmd = &cobra.Command{
 		fmt.Println("   - Removing temporary caches...")
 		cleanupShellConfig()
 
+		// Delete static completions directory
+		home, _ := os.UserHomeDir()
+		compDir := filepath.Join(home, ".minhthetus-cli")
+		if _, err := os.Stat(compDir); err == nil {
+			fmt.Println("   - Removing completion files...")
+			_ = os.RemoveAll(compDir)
+		}
+
 		// 4. Determine installation method and proceed
 		method := detectInstallMethod(exePath)
 		fmt.Printf("⏳ Detected %s installation.\n", method)
