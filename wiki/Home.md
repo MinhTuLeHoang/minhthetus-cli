@@ -1,6 +1,6 @@
 # Welcome to the minhthetus-cli Wiki!
 
-![Version](https://img.shields.io/badge/version-v1.3.4-green) ![Language](https://img.shields.io/badge/language-Go-00ADD8.svg?style=flat&logo=go) ![License](https://img.shields.io/badge/license-MIT-blue)
+![Version](https://img.shields.io/badge/version-v1.4.0-green) ![Language](https://img.shields.io/badge/language-Go-00ADD8.svg?style=flat&logo=go) ![License](https://img.shields.io/badge/license-MIT-blue)
 
 A professional, high-performance CLI tool designed for automation and developer productivity, written natively in Go.
 
@@ -30,7 +30,7 @@ Use the sidebar on the right or the links below to explore specific features:
 
 ### System Utilities
 *   [[Sys-Size]]: Lists the size of all files and folders in the current directory, sorted by size descending.
-
+*   [[Sys-Clean-My-Mac]]: Cleans up macOS caches, logs, and temp files using mac-cleaner-cli.
 
 ---
 
