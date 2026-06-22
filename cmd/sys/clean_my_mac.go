@@ -11,26 +11,26 @@ import (
 
 var uninstallFlag bool
 
-// CleanMacCmd represents the sys clean-mac command
-var CleanMacCmd = &cobra.Command{
-	Use:   "clean-mac",
+// CleanMyMacCmd represents the sys clean-my-mac command
+var CleanMyMacCmd = &cobra.Command{
+	Use:   "clean-my-mac",
 	Short: "Cleans up macOS caches, logs, and temp files using mac-cleaner-cli.",
 	Long: `Cleans up macOS system cache, logs, and developer temporary directories.
 Ensures a Node.js version of 20 or higher is active (using nvm to switch/install if needed),
 then runs the interactive npx mac-cleaner-cli tool.`,
 	Annotations: map[string]string{
-		"title": "Clean Mac",
+		"title": "Clean My Mac",
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		runCleanMac()
+		runCleanMyMac()
 	},
 }
 
 func init() {
-	CleanMacCmd.Flags().BoolVarP(&uninstallFlag, "uninstall", "u", false, "Uninstall mac-cleaner-cli configurations")
+	CleanMyMacCmd.Flags().BoolVarP(&uninstallFlag, "uninstall", "u", false, "Uninstall mac-cleaner-cli configurations")
 }
 
-func runCleanMac() {
+func runCleanMyMac() {
 	fmt.Printf("%s Checking and configuring environment...\n", ui.HourglassIcon)
 
 	script := `

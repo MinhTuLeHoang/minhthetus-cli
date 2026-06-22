@@ -1,10 +1,10 @@
-# System Clean Mac Command
+# System Clean My Mac Command
 
 Cleans up macOS caches, logs, and developer temporary files using `mac-cleaner-cli`.
 
 ## Usage
 ```bash
-minhthetus-cli sys clean-mac [options]
+minhthetus-cli sys clean-my-mac [options]
 ```
 
 ## Options

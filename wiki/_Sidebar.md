@@ -19,7 +19,7 @@
 
 ### 💻 System Subcommands
 * [[Sys-Size]]
-* [[Sys-Clean-Mac]]
+* [[Sys-Clean-My-Mac]]
 
 ### 🛠 Other
 * [[Remote-Scripts-Utils-GenQR]]
