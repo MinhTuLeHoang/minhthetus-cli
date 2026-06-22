@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-06-23
+
+### Added
+- Added sys clean-my-mac command to clean macOS caches and temp files
+
+### Changed
+- Colorized active Node version output in green
+
 ## [1.3.4] - 2026-06-20
 
 ### Added
