@@ -30,7 +30,7 @@ Use the sidebar on the right or the links below to explore specific features:
 
 ### System Utilities
 *   [[Sys-Size]]: Lists the size of all files and folders in the current directory, sorted by size descending.
-
+*   [[Sys-Clean-Mac]]: Cleans up macOS caches, logs, and temp files using mac-cleaner-cli.
 
 ---
 
