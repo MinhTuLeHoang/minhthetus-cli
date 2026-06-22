@@ -25,5 +25,5 @@ minhthetus-cli sys clean-my-mac [options]
 
 ## Version History
 
-* **First Stable Version Supported**: `v1.3.5`
-* **Latest Stable Version Update**: `v1.3.5`
+* **First Stable Version Supported**: `v1.4.0`
+* **Latest Stable Version Update**: `v1.4.0`
