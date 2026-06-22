@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-06-23
+
+### Changed
+- Updated the wiki sync GitHub Action workflow to use a custom 'WIKI_SYNC_TOKEN' instead of the reserved 'GITHUB_TOKEN'.
+- Added support for manual workflow triggers ('workflow_dispatch') to the wiki sync GitHub Action workflow.
+
+### Fixed
+- Automatically run 'brew update' before upgrading the CLI via Homebrew to prevent using cached, outdated formulae databases.
+
 ## [1.4.0] - 2026-06-23
 
 ### Added

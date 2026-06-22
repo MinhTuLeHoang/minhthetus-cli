@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   sync-wiki:
@@ -14,7 +15,7 @@ jobs:
 
       - name: Clone Wiki repository
         run: |
-          git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/MinhTuLeHoang/minhthetus-cli.wiki.git wiki-repo
+          git clone https://x-access-token:${{ secrets.WIKI_SYNC_TOKEN }}@github.com/MinhTuLeHoang/minhthetus-cli.wiki.git wiki-repo
 
       - name: Sync wiki files
         run: |

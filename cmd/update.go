@@ -176,6 +176,9 @@ var updateCmd = &cobra.Command{
 				fmt.Printf("%s %s\n", ui.ErrorMessage(""), "Update cancelled.")
 				return
 			}
+			fmt.Printf("%s Running 'brew update' to refresh formulae...\n", ui.HourglassIcon)
+			updateCmd := exec.Command("brew", "update")
+			_ = updateCmd.Run() // Attempt to update, ignore errors to still try upgrade
 
 			fmt.Printf("%s Running 'brew upgrade minhthetus-cli'...\n", ui.HourglassIcon)
 			brewCmd := exec.Command("brew", "upgrade", "minhthetus-cli")
