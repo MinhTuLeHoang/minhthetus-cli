@@ -124,45 +124,45 @@ var updateCmd = &cobra.Command{
 	Short: "Update the CLI to the latest version",
 	Long:  `Detects the installation method (Homebrew, Go, or Manual) and updates the minhthetus-cli binary to the latest version while safely preserving all local configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("ℹ️  All local configurations in ~/.minhthetus-cli/ will be fully preserved.")
-		fmt.Println("⏳ Checking current installation method...")
+		fmt.Println(ui.InfoMessage("All local configurations in ~/.minhthetus-cli/ will be fully preserved."))
+		fmt.Printf("%s Checking current installation method...\n", ui.HourglassIcon)
 
 		// 1. Detect executable path
 		exePath, err := os.Executable()
 		if err != nil {
-			fmt.Printf("❌ Failed to detect executable path: %v\n", err)
+			fmt.Printf("%s %s\n", ui.ErrorMessage(""), ui.RedStyle().Render(fmt.Sprintf("Failed to detect executable path: %v", err)))
 			return
 		}
 
 		method := detectInstallMethod(exePath)
-		fmt.Printf("⏳ Detected %s installation.\n", method)
+		fmt.Printf("%s Detected %s installation.\n", ui.HourglassIcon, method)
 
 		// 1b. Check if update is needed
-		fmt.Println("⏳ Checking for updates...")
+		fmt.Printf("%s Checking for updates...\n", ui.HourglassIcon)
 		currentVer := getVersionString()
 		latestVer, err := fetchLatestVersion()
 		if err == nil {
 			if isUpToDate(currentVer, latestVer) {
-				fmt.Printf("✅ minhthetus-cli is already up-to-date (current version: %s, latest version: %s).\n", currentVer, latestVer)
+				fmt.Printf("%s minhthetus-cli is already up-to-date (current version: %s, latest version: %s).\n", ui.SuccessMessage(""), currentVer, latestVer)
 				return
 			}
-			fmt.Printf("✨ A new version is available: %s (current: %s)\n", latestVer, currentVer)
+			fmt.Printf("✨ A new version is available: %s (current: %s)\n", ui.GreenStyle().Render(latestVer), ui.GrayStyle().Render(currentVer))
 		} else {
 			// If online check fails, and it's Homebrew, we can try 'brew outdated' as a local/fallback check
 			if method == Homebrew {
-				fmt.Println("⏳ Checking local Homebrew packages...")
+				fmt.Printf("%s Checking local Homebrew packages...\n", ui.HourglassIcon)
 				outdatedCmd := exec.Command("brew", "outdated", "minhthetus-cli")
 				out, outdatedErr := outdatedCmd.Output()
 				if outdatedErr == nil && len(strings.TrimSpace(string(out))) == 0 {
-					fmt.Println("✅ minhthetus-cli is already up-to-date via Homebrew.")
+					fmt.Printf("%s minhthetus-cli is already up-to-date via Homebrew.\n", ui.SuccessMessage(""))
 					return
 				}
 			}
 
-			fmt.Printf("⚠️  Could not retrieve latest version information online: %v\n", err)
+			fmt.Printf("%s %s\n", ui.WarningMessage(""), ui.YellowStyle().Render(fmt.Sprintf("Could not retrieve latest version information online: %v", err)))
 			proceed, confirmErr := ui.Confirm("Would you like to force the update process anyway?", 0, false)
 			if confirmErr != nil || !proceed {
-				fmt.Println("❌ Update cancelled.")
+				fmt.Printf("%s %s\n", ui.ErrorMessage(""), "Update cancelled.")
 				return
 			}
 		}
@@ -173,41 +173,41 @@ var updateCmd = &cobra.Command{
 			confirmMsg := "Would you like to run 'brew upgrade minhthetus-cli' to update?"
 			confirmed, err := ui.Confirm(confirmMsg, 0, true)
 			if err != nil || !confirmed {
-				fmt.Println("❌ Update cancelled.")
+				fmt.Printf("%s %s\n", ui.ErrorMessage(""), "Update cancelled.")
 				return
 			}
 
-			fmt.Println("⏳ Running 'brew upgrade minhthetus-cli'...")
+			fmt.Printf("%s Running 'brew upgrade minhthetus-cli'...\n", ui.HourglassIcon)
 			brewCmd := exec.Command("brew", "upgrade", "minhthetus-cli")
 			brewCmd.Stdout = os.Stdout
 			brewCmd.Stderr = os.Stderr
 			brewCmd.Stdin = os.Stdin
 			if err := brewCmd.Run(); err != nil {
-				fmt.Printf("❌ Homebrew update failed: %v\n", err)
-				fmt.Println("👉 Please run the command manually: brew upgrade minhthetus-cli")
+				fmt.Printf("%s %s\n", ui.ErrorMessage(""), ui.RedStyle().Render(fmt.Sprintf("Homebrew update failed: %v", err)))
+				fmt.Printf("%s Please run the command manually: %s\n", ui.InfoMessage(""), ui.CyanStyle().Render("brew upgrade minhthetus-cli"))
 				return
 			}
-			fmt.Println("✅ Successfully updated minhthetus-cli via Homebrew!")
+			fmt.Printf("%s %s\n", ui.SuccessMessage(""), ui.GreenStyle().Render("Successfully updated minhthetus-cli via Homebrew!"))
 
 		case GoInstall:
 			confirmMsg := "Would you like to run 'go install' to update to the latest version?"
 			confirmed, err := ui.Confirm(confirmMsg, 0, true)
 			if err != nil || !confirmed {
-				fmt.Println("❌ Update cancelled.")
+				fmt.Printf("%s %s\n", ui.ErrorMessage(""), "Update cancelled.")
 				return
 			}
 
-			fmt.Println("⏳ Running 'go install github.com/MinhTuLeHoang/minhthetus-cli@latest'...")
+			fmt.Printf("%s Running 'go install github.com/MinhTuLeHoang/minhthetus-cli@latest'...\n", ui.HourglassIcon)
 			goCmd := exec.Command("go", "install", "github.com/MinhTuLeHoang/minhthetus-cli@latest")
 			goCmd.Stdout = os.Stdout
 			goCmd.Stderr = os.Stderr
 			goCmd.Stdin = os.Stdin
 			if err := goCmd.Run(); err != nil {
-				fmt.Printf("❌ Go install update failed: %v\n", err)
-				fmt.Println("👉 Please run the command manually: go install github.com/MinhTuLeHoang/minhthetus-cli@latest")
+				fmt.Printf("%s %s\n", ui.ErrorMessage(""), ui.RedStyle().Render(fmt.Sprintf("Go install update failed: %v", err)))
+				fmt.Printf("%s Please run the command manually: %s\n", ui.InfoMessage(""), ui.CyanStyle().Render("go install github.com/MinhTuLeHoang/minhthetus-cli@latest"))
 				return
 			}
-			fmt.Println("✅ Successfully updated minhthetus-cli via Go!")
+			fmt.Printf("%s %s\n", ui.SuccessMessage(""), ui.GreenStyle().Render("Successfully updated minhthetus-cli via Go!"))
 
 		case ManualBuild:
 			// Check if we are running in the cloned directory by checking for Makefile
@@ -215,32 +215,32 @@ var updateCmd = &cobra.Command{
 				confirmMsg := "Manual/Makefile installation detected. Do you want to pull the latest changes and reinstall now?"
 				confirmed, err := ui.Confirm(confirmMsg, 0, true)
 				if err == nil && confirmed {
-					fmt.Println("⏳ Pulling latest changes (git pull)...")
+					fmt.Printf("%s Pulling latest changes (git pull)...\n", ui.HourglassIcon)
 					gitCmd := exec.Command("git", "pull")
 					gitCmd.Stdout = os.Stdout
 					gitCmd.Stderr = os.Stderr
 					gitCmd.Stdin = os.Stdin
 					if err := gitCmd.Run(); err != nil {
-						fmt.Printf("❌ Failed to git pull: %v\n", err)
+						fmt.Printf("%s %s\n", ui.ErrorMessage(""), ui.RedStyle().Render(fmt.Sprintf("Failed to git pull: %v", err)))
 						return
 					}
 
-					fmt.Println("⏳ Recompiling and reinstalling (make install)...")
+					fmt.Printf("%s Recompiling and reinstalling (make install)...\n", ui.HourglassIcon)
 					makeCmd := exec.Command("make", "install")
 					makeCmd.Stdout = os.Stdout
 					makeCmd.Stderr = os.Stderr
 					makeCmd.Stdin = os.Stdin
 					if err := makeCmd.Run(); err != nil {
-						fmt.Printf("❌ Failed to run make install: %v\n", err)
+						fmt.Printf("%s %s\n", ui.ErrorMessage(""), ui.RedStyle().Render(fmt.Sprintf("Failed to run make install: %v", err)))
 						return
 					}
-					fmt.Println("✅ Successfully updated minhthetus-cli manually!")
+					fmt.Printf("%s %s\n", ui.SuccessMessage(""), ui.GreenStyle().Render("Successfully updated minhthetus-cli manually!"))
 					return
 				}
 			}
 
-			fmt.Println("👉 Manual/Makefile installation detected. To update, please navigate to your cloned minhthetus-cli repository and run:")
-			fmt.Println("   git pull && make install")
+			fmt.Printf("%s %s\n", ui.InfoMessage(""), "Manual/Makefile installation detected. To update, please navigate to your cloned minhthetus-cli repository and run:")
+			fmt.Println(ui.GrayStyle().Render("   git pull && make install"))
 		}
 	},
 }
