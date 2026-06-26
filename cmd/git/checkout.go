@@ -109,19 +109,44 @@ minhthetus-cli git checkout`,
 			finalName = branchType + "/" + jiraID + "-" + formattedDesc
 		}
 
-		fmt.Printf("⏳ Creating and checking out: %s...\n", ui.CyanStyle().Render(finalName))
-		if err := git.RunInteractive("checkout", "-b", finalName); err != nil {
+		currentBranch, err := git.Run("rev-parse", "--abbrev-ref", "HEAD")
+		if err != nil {
+			fmt.Printf("Error getting current branch: %v\n", err)
+			return
+		}
+
+		sourceBranch := currentBranch
+		if currentBranch != "master" && !strings.HasPrefix(currentBranch, "releases/") {
+			fmt.Printf("Source branch to create from (current branch): %s\n", ui.CyanStyle().Render(currentBranch))
+			options := []string{
+				"yes - create from current branch",
+				"master - create from master",
+				"no - cancel",
+			}
+			choice, err := ui.Choose("Confirm source branch:", options)
+			if err != nil || choice == "" || strings.HasPrefix(choice, "no") {
+				fmt.Println("❌ Creation cancelled.")
+				return
+			}
+			if strings.HasPrefix(choice, "master") {
+				sourceBranch = "master"
+			}
+		}
+
+		fmt.Printf("⏳ Creating and checking out: %s from %s...\n", ui.CyanStyle().Render(finalName), ui.CyanStyle().Render(sourceBranch))
+		if err := git.RunInteractive("checkout", "-b", finalName, sourceBranch); err != nil {
 			fmt.Printf("Error creating branch: %v\n", err)
 			return
 		}
 
-		fmt.Printf("✅ Successfully created and checked out %s\n", ui.CyanStyle().Render(finalName))
+		fmt.Printf("✅ Successfully created and checked out %s from %s\n", ui.CyanStyle().Render(finalName), ui.CyanStyle().Render(sourceBranch))
 		fmt.Println("⏳ Pushing to origin...")
 		if _, err := git.Run("push", "-u", "origin", finalName); err != nil {
 			fmt.Printf("⚠️ Failed to push to origin: %v\n", err)
 		} else {
 			fmt.Println("✅ Successfully pushed to origin.")
 		}
+		fmt.Printf("\nSummary:\nCreated branch %s from %s\n", finalName, sourceBranch)
 	},
 }
 

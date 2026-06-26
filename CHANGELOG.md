@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-06-26
+
+### Added
+- Confirmation prompt when creating a new branch to choose the source branch (current or master)
+
 ## [1.4.1] - 2026-06-23
 
 ### Changed
