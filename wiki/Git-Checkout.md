@@ -37,7 +37,7 @@ minhthetus-cli git checkout [options]
     *   Constructs the final branch name:
         *   With JIRA: `<type>/<jira-id>-<formatted-description>`
         *   Without JIRA: `<type>/<formatted-description>`
-7.  **Branch Source Confirmation**:
+7.  **Branch Source Confirmation**: (Supported from v1.4.2)
     *   If the current branch is not `master` and doesn't start with `releases/`, prompts the user to select the source branch from 3 options:
         *   `yes - create from current branch`: Uses the current active branch as the source.
         *   `master - create from master`: Uses `master` as the source branch.
