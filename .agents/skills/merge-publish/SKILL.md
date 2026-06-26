@@ -51,9 +51,8 @@ make get-latest-stable-version
   - update `wiki/` for user document
 - For bug fixed:
   - update `guide/` for workflow document
-5.  **Check Documentation Integrity**: Check if the user wiki pages in `wiki/` and developer guides in `guide/` are fully up-to-date with your Go command implementations. If any command usage, flags, or internal configurations under `cmd/` were modified but not documented, **run the `update-docs` skill** to synchronize the documentation files before release. Update `Latest Stable Version` and note version for new feature in command.
-
-**IMPORTANT:** If has update `wiki/` or `guide/`, request review from me, and wait for me to allow continue.
+6.  **Check Documentation Integrity**: Check if the user wiki pages in `wiki/` and developer guides in `guide/` are fully up-to-date with your Go command implementations. If any command usage, flags, or internal configurations under `cmd/` were modified but not documented, **run the `update-docs` skill** to synchronize the documentation files before release. Update `Latest Stable Version` and note version for new feature in command.
+7. If has changes in docs/ or wiki/, then commit and push to origin.
 
 ### Step 4: Execute Non-Interactive Release
 Run the publishing script through the Makefile target, passing the calculated target version and generated changelog entries as the `ARGS` variable:
