@@ -33,4 +33,11 @@ minhthetus-cli sys size [options]
 ## Version History
 
 * **First Stable Version Supported**: `v1.3.4`
-* **Latest Stable Version Update**: `v1.3.4`
+* **Latest Stable Version Update**: `v1.5.0`
+
+- **v1.5.0**: Parallelized directory size calculations using a workload-balanced concurrency pool. Subdirectories at all depths are dynamically enqueued to ensure uniform worker utilization.
+  - **Benchmark Data** (Tested on `/Users/lap15864-local` containing ~1.2 million directories and 150+ GB, warm filesystem cache):
+    - **Single-Threaded Baseline**: `3m 12.292s` (192.29s)
+    - **Parallel v1 (Static Top-Level split)**: `2m 8.197s` (128.20s) — `~1.50x` speedup
+    - **Parallel v2 (Workload-Balanced)**: `1m 34.159s` (94.16s) — **`~2.04x` speedup** (more than 2x faster)
+- **v1.3.4**: Introduced the directory size calculation command.

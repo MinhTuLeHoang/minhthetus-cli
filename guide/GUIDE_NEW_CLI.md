@@ -124,6 +124,9 @@ If you are writing commands or features that are intended only for developers (e
 ### Step 1: Add the Dev Build Tag
 Add the `//go:build dev` build tag at the very top of each file under `cmd/debug/`. This ensures the files are completely ignored in standard production builds.
 
+> [!NOTE]
+> Go uses the Build Tags (Build Constraints) directive placed at the top of Go source files.
+
 ```go
 //go:build dev
 
