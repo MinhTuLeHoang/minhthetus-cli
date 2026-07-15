@@ -35,9 +35,10 @@ minhthetus-cli sys size [options]
 ## Version History
 
 * **First Stable Version Supported**: `v1.3.4`
-* **Latest Stable Version Update**: `v1.5.1`
+* **Latest Stable Version Update**: `v1.5.2`
 
-- **v1.5.1**: Added active loading spinner animation immediately when running the command, displayed the number of parallel workers used for calculation, color-coded the calculated elapsed time based on speed threshold, and printed recursive counts of files, folders, and total size.
+- **v1.5.2**: Added active loading spinner animation immediately when running the command, displayed the number of parallel workers used for calculation, color-coded the calculated elapsed time based on speed threshold, and printed recursive counts of files, folders, and total size.
+- **v1.5.1**: Minor fixes and Homebrew tap shell completion setup improvements.
 - **v1.5.0**: Parallelized directory size calculations using a workload-balanced concurrency pool. Subdirectories at all depths are dynamically enqueued to ensure uniform worker utilization.
   - **Benchmark Data** (Tested on `/Users/lap15864-local` containing ~1.2 million directories and 150+ GB, warm filesystem cache):
     - **Single-Threaded Baseline**: `3m 12.292s` (192.29s)
