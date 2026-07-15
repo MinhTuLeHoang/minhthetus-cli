@@ -48,3 +48,6 @@ next-env.d.ts
 /minhthetus-cli.test
 *.test
 *.out
+
+# Local checked-out repositories
+/homebrew-tap/

@@ -67,58 +67,76 @@ func runSize() {
 	var wg sync.WaitGroup
 	tasks := make(chan walkTask, 200000)
 
-	for workerID := 1; workerID <= numWorkers; workerID++ {
-		go func(id int) {
-			for task := range tasks {
-				if isDevMode {
-					fmt.Printf("[DEBUG] worker%d: scanning %s\n", id, task.path)
-				}
-				subEntries, err := os.ReadDir(task.path)
-				if err != nil {
-					wg.Done()
-					continue
-				}
-				for _, se := range subEntries {
-					fullPath := filepath.Join(task.path, se.Name())
-					if se.IsDir() {
-						wg.Add(1)
-						newTask := walkTask{path: fullPath, topLevelIndex: task.topLevelIndex}
-						select {
-						case tasks <- newTask:
-						default:
-							go func(t walkTask) {
-								tasks <- t
-							}(newTask)
-						}
-					} else {
-						info, err := se.Info()
-						if err == nil {
-							atomic.AddInt64(&sizes[task.topLevelIndex], info.Size())
+	var totalFiles int64
+	var totalDirs int64
+	var totalSize int64
+
+	title := fmt.Sprintf("Calculating size using %d workers...", numWorkers)
+	err = ui.RunWithSpinner(title, func() error {
+		for workerID := 1; workerID <= numWorkers; workerID++ {
+			go func(id int) {
+				for task := range tasks {
+					if isDevMode {
+						fmt.Printf("[DEBUG] worker%d: scanning %s\n", id, task.path)
+					}
+					subEntries, err := os.ReadDir(task.path)
+					if err != nil {
+						wg.Done()
+						continue
+					}
+					for _, se := range subEntries {
+						fullPath := filepath.Join(task.path, se.Name())
+						if se.IsDir() {
+							atomic.AddInt64(&totalDirs, 1)
+							wg.Add(1)
+							newTask := walkTask{path: fullPath, topLevelIndex: task.topLevelIndex}
+							select {
+							case tasks <- newTask:
+							default:
+								go func(t walkTask) {
+									tasks <- t
+								}(newTask)
+							}
+						} else {
+							atomic.AddInt64(&totalFiles, 1)
+							info, err := se.Info()
+							if err == nil {
+								atomic.AddInt64(&sizes[task.topLevelIndex], info.Size())
+								atomic.AddInt64(&totalSize, info.Size())
+							}
 						}
 					}
+					wg.Done()
 				}
-				wg.Done()
-			}
-		}(workerID)
-	}
+			}(workerID)
+		}
 
-	// Initialize the queue with top-level directories
-	for i, e := range entries {
-		fullPath := filepath.Join(cwd, e.Name())
-		if e.IsDir() {
-			wg.Add(1)
-			tasks <- walkTask{path: fullPath, topLevelIndex: i}
-		} else {
-			info, err := e.Info()
-			if err == nil {
-				sizes[i] = info.Size()
+		// Initialize the queue with top-level directories
+		for i, e := range entries {
+			fullPath := filepath.Join(cwd, e.Name())
+			if e.IsDir() {
+				atomic.AddInt64(&totalDirs, 1)
+				wg.Add(1)
+				tasks <- walkTask{path: fullPath, topLevelIndex: i}
+			} else {
+				atomic.AddInt64(&totalFiles, 1)
+				info, err := e.Info()
+				if err == nil {
+					sizes[i] = info.Size()
+					atomic.AddInt64(&totalSize, info.Size())
+				}
 			}
 		}
-	}
 
-	// Wait for all subdirectories to finish processing
-	wg.Wait()
-	close(tasks)
+		// Wait for all subdirectories to finish processing
+		wg.Wait()
+		close(tasks)
+		return nil
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error running spinner: %v\n", err)
+		return
+	}
 
 	// Assemble final sizeEntry slice
 	items := make([]sizeEntry, len(entries))
@@ -136,8 +154,18 @@ func runSize() {
 		return items[i].size > items[j].size
 	})
 
-	timeStr := ui.YellowStyle().Render(elapsed.Round(time.Millisecond).String())
-	fmt.Printf("%s Calculated in %s\n\n", ui.HourglassIcon, timeStr)
+	roundedStr := elapsed.Round(time.Millisecond).String()
+	timeStr := coloredDuration(roundedStr, elapsed)
+	fmt.Printf("%s Calculated in %s (using %d workers)\n\n", ui.HourglassIcon, timeStr, numWorkers)
+
+	statsStr := fmt.Sprintf(
+		"📊 %s\n\n%s %s: %s\n%s %s: %s\n%s %s: %s\n",
+		ui.BoldStyle.Render("SUMMARY"),
+		ui.BulletIcon, ui.BoldStyle.Render("Files"), ui.CyanStyle().Render(fmt.Sprintf("%d", totalFiles)),
+		ui.BulletIcon, ui.BoldStyle.Render("Directory"), ui.CyanStyle().Render(fmt.Sprintf("%d", totalDirs)),
+		ui.BulletIcon, ui.BoldStyle.Render("Total size"), coloredSize(formatSize(totalSize), totalSize),
+	)
+	fmt.Println(statsStr)
 
 	header := ui.BoldStyle.Render(fmt.Sprintf("%-10s  %-6s  %s", "SIZE", "TYPE", "NAME"))
 	fmt.Println(header)
@@ -202,6 +230,19 @@ func coloredSize(s string, b int64) string {
 		style = ui.YellowStyle()
 	default:
 		style = ui.GreenStyle()
+	}
+	return style.Render(s)
+}
+
+func coloredDuration(s string, d time.Duration) string {
+	var style lipgloss.Style
+	switch {
+	case d < 500*time.Millisecond:
+		style = ui.GreenStyle()
+	case d < 10*time.Second:
+		style = ui.YellowStyle()
+	default:
+		style = ui.RedStyle()
 	}
 	return style.Render(s)
 }

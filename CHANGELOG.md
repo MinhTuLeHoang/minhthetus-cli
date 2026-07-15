@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-07-15
+
+### Added
+- Show loading animation spinner immediately when executing size command
+- Added recursive statistics counts summary (Files count, Directory count, and Total size) in a structured vertical bulleted list format
+
+### Changed
+- Display worker count in timing result print
+- Dynamically colorize elapsed calculation duration based on speed thresholds
+- Support non-TTY execution fallback to synchronous processing gracefully
+
 ## [1.5.1] - 2026-07-15
 
 ### Fixed
