@@ -18,6 +18,7 @@ minhthetus-cli sys size [options]
 2.  **Scan Directory Entries**:
     *   Reads all files and folders, including hidden files/directories (e.g. starting with `.`).
 3.  **Calculate Disk Usage**:
+    *   Shows a loading spinner animation (`Calculating size using <N> workers...`) immediately.
     *   For files: Retrieves the file size directly using standard file metadata.
     *   For directories: Recursively walks the directory tree to calculate the total size of all nested files.
 4.  **Sort Entries**:
@@ -28,13 +29,15 @@ minhthetus-cli sys size [options]
         *   **Red**: Size $\ge$ 100 MB.
         *   **Yellow**: Size $\ge$ 1 MB.
         *   **Green**: Size $<$ 1 MB.
-    *   Displays the total time taken to calculate the sizes (e.g. `Calculated in 2.3ms`).
+    *   Displays the total time taken (color-coded: Green for <500ms, Yellow for <10s, Red for >=10s) and worker pool size (e.g. `⏳ Calculated in 2.3ms (using 8 workers)`).
+    *   Displays a summarized statistics card in list format containing total files, directory count, and total size (e.g. `📊 SUMMARY`, `• Files: 1529`, `• Directory: 370`, `• Total size: 23.0 MB`).
 
 ## Version History
 
 * **First Stable Version Supported**: `v1.3.4`
-* **Latest Stable Version Update**: `v1.5.0`
+* **Latest Stable Version Update**: `v1.5.1`
 
+- **v1.5.1**: Added active loading spinner animation immediately when running the command, displayed the number of parallel workers used for calculation, color-coded the calculated elapsed time based on speed threshold, and printed recursive counts of files, folders, and total size.
 - **v1.5.0**: Parallelized directory size calculations using a workload-balanced concurrency pool. Subdirectories at all depths are dynamically enqueued to ensure uniform worker utilization.
   - **Benchmark Data** (Tested on `/Users/lap15864-local` containing ~1.2 million directories and 150+ GB, warm filesystem cache):
     - **Single-Threaded Baseline**: `3m 12.292s` (192.29s)

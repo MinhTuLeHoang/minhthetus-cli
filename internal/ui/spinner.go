@@ -2,10 +2,12 @@ package ui
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-isatty"
 )
 
 type spinnerModel struct {
@@ -54,6 +56,10 @@ func (m spinnerModel) View() string {
 
 // RunWithSpinner executes a function while showing a spinner.
 func RunWithSpinner(title string, fn func() error) error {
+	if !isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd()) {
+		return fn()
+	}
+
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
