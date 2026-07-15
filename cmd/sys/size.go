@@ -5,8 +5,11 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/MinhTuLeHoang/minhthetus-cli/internal/ui"
@@ -33,6 +36,11 @@ type sizeEntry struct {
 	isDir bool
 }
 
+type walkTask struct {
+	path          string
+	topLevelIndex int
+}
+
 func runSize() {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -48,19 +56,78 @@ func runSize() {
 
 	start := time.Now()
 
-	items := make([]sizeEntry, 0, len(entries))
-	for _, e := range entries {
-		var sz int64
+	numWorkers := runtime.NumCPU()
+	if numWorkers < 4 {
+		numWorkers = 4
+	} else if numWorkers > 16 {
+		numWorkers = 16
+	}
+
+	sizes := make([]int64, len(entries))
+	var wg sync.WaitGroup
+	tasks := make(chan walkTask, 200000)
+
+	for workerID := 1; workerID <= numWorkers; workerID++ {
+		go func(id int) {
+			for task := range tasks {
+				if isDevMode {
+					fmt.Printf("[DEBUG] worker%d: scanning %s\n", id, task.path)
+				}
+				subEntries, err := os.ReadDir(task.path)
+				if err != nil {
+					wg.Done()
+					continue
+				}
+				for _, se := range subEntries {
+					fullPath := filepath.Join(task.path, se.Name())
+					if se.IsDir() {
+						wg.Add(1)
+						newTask := walkTask{path: fullPath, topLevelIndex: task.topLevelIndex}
+						select {
+						case tasks <- newTask:
+						default:
+							go func(t walkTask) {
+								tasks <- t
+							}(newTask)
+						}
+					} else {
+						info, err := se.Info()
+						if err == nil {
+							atomic.AddInt64(&sizes[task.topLevelIndex], info.Size())
+						}
+					}
+				}
+				wg.Done()
+			}
+		}(workerID)
+	}
+
+	// Initialize the queue with top-level directories
+	for i, e := range entries {
+		fullPath := filepath.Join(cwd, e.Name())
 		if e.IsDir() {
-			sz = calcDirSize(filepath.Join(cwd, e.Name()))
+			wg.Add(1)
+			tasks <- walkTask{path: fullPath, topLevelIndex: i}
 		} else {
 			info, err := e.Info()
-			if err != nil {
-				continue
+			if err == nil {
+				sizes[i] = info.Size()
 			}
-			sz = info.Size()
 		}
-		items = append(items, sizeEntry{name: e.Name(), size: sz, isDir: e.IsDir()})
+	}
+
+	// Wait for all subdirectories to finish processing
+	wg.Wait()
+	close(tasks)
+
+	// Assemble final sizeEntry slice
+	items := make([]sizeEntry, len(entries))
+	for i, e := range entries {
+		items[i] = sizeEntry{
+			name:  e.Name(),
+			size:  sizes[i],
+			isDir: e.IsDir(),
+		}
 	}
 
 	elapsed := time.Since(start)
@@ -106,6 +173,7 @@ func calcDirSize(path string) int64 {
 				total += info.Size()
 			}
 		}
+		// return nil for WalkDir to continue to loop inside this dir
 		return nil
 	})
 	return total
