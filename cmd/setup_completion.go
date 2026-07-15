@@ -62,8 +62,8 @@ func SetupCompletion(silent bool) {
 		fmt.Printf("⏳ Setting up completion for %s...\n", shell)
 	}
 
-	// Append to rc file
-	f, err := os.OpenFile(rcFile, os.O_APPEND|os.O_WRONLY, 0644)
+	// Append to rc file (create if it doesn't exist)
+	f, err := os.OpenFile(rcFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		if !silent {
 			fmt.Printf("❌ Error opening %s: %v\n", rcFile, err)
