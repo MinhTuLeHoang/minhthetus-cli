@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-15
+
+### Added
+- Workload-balanced parallel directory walking logic for speed optimization
+- size_dev.go and size_prod.go build tag configuration
+
+### Changed
+- [DEV MODE] log in debug_register.go
+
+### Fixed
+- Resolved thread idle bottlenecks in directory traversal
+
 ## [1.4.2] - 2026-06-26
 
 ### Added
