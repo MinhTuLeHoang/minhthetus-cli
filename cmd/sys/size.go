@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MinhTuLeHoang/minhthetus-cli/internal/config"
 	"github.com/MinhTuLeHoang/minhthetus-cli/internal/ui"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
@@ -76,7 +77,7 @@ func runSize() {
 		for workerID := 1; workerID <= numWorkers; workerID++ {
 			go func(id int) {
 				for task := range tasks {
-					if isDevMode {
+					if config.IsDevMode {
 						fmt.Printf("[DEBUG] worker%d: scanning %s\n", id, task.path)
 					}
 					subEntries, err := os.ReadDir(task.path)

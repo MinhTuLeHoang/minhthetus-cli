@@ -92,7 +92,4 @@ minhthetus-cli git checkout
 
 # Run a version bump for merge requests
 minhthetus-cli git merge-request
-
-# Clean up local logs
-minhthetus-cli sys clean-log
 ```

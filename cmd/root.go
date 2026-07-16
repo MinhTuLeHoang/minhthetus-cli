@@ -28,9 +28,6 @@ and supports various modules like git, sys, web, and more.`,
 // Hook for conditionally registering the developer debug command package
 var registerDebug func() = nil
 
-// Indicates whether the binary was compiled in developer/debug mode
-var isDevMode = false
-
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
