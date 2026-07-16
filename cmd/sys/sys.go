@@ -14,8 +14,6 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
-	Cmd.AddCommand(CleanLogCmd)
-	Cmd.AddCommand(PushLogCmd)
 	Cmd.AddCommand(SizeCmd)
 	Cmd.AddCommand(CleanMyMacCmd)
 }

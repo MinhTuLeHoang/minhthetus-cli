@@ -9,7 +9,6 @@ import (
 )
 
 func init() {
-	isDevMode = true
 	fmt.Println("\n[DEV MODE]\n")
 	registerDebug = func() {
 		rootCmd.AddCommand(debug.Cmd)

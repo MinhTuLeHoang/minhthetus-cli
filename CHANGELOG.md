@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.3] - 2026-07-16
+
+### Changed
+- Unified isDevMode flag into a centralized config package using Go build tags.
+
+### Removed
+- Removed clean-log and push-log commands under the sys namespace.
+
 ## [1.5.2] - 2026-07-15
 
 ### Added
