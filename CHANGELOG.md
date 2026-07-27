@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.5.3] - 2026-07-16
 
+### Added
+- Added sys host command to manage the system host file (/etc/hosts) interactively.
+
 ### Changed
 - Unified isDevMode flag into a centralized config package using Go build tags.
 

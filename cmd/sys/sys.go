@@ -16,4 +16,5 @@ var Cmd = &cobra.Command{
 func init() {
 	Cmd.AddCommand(SizeCmd)
 	Cmd.AddCommand(CleanMyMacCmd)
+	Cmd.AddCommand(HostCmd)
 }
