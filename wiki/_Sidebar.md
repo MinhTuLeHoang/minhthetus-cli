@@ -20,6 +20,7 @@
 ### 💻 System Subcommands
 * [[Sys-Size]]
 * [[Sys-Clean-My-Mac]]
+* [[Sys-Host]]
 
 ### 🛠 Other
 * [[Remote-Scripts-Utils-GenQR]]
