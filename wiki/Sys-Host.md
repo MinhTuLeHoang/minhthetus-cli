@@ -39,7 +39,7 @@ When formatting or writing back changes, the file is standardized using these st
 
 ## Version History
 
-* **First Stable Version Supported**: `v1.5.3`
-* **Latest Stable Version Update**: `v1.5.3`
+* **First Stable Version Supported**: `v1.6.0`
+* **Latest Stable Version Update**: `v1.6.0`
 
-- **v1.5.3**: Added interactive search, view, addition, deletion, and formatting/sorting of the `/etc/hosts` file.
+- **v1.6.0**: Added interactive search, view, addition, deletion, and formatting/sorting of the `/etc/hosts` file.
