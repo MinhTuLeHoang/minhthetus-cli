@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-07-27
+
+### Added
+- Interactive sys host command for managing /etc/hosts with search, edit, and auto-sort capabilities
+
 ## [1.5.3] - 2026-07-16
 
 ### Added
