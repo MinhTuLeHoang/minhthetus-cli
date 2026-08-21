@@ -15,7 +15,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.WIKI_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
       - name: Detect Version and Check for Change
@@ -42,7 +42,7 @@ jobs:
       - name: Create and Push Release Tag
         if: steps.check_version.outputs.should_tag == 'true'
         env:
-          GH_TOKEN: ${{ secrets.WIKI_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION=${{ steps.check_version.outputs.config_version }}
           
