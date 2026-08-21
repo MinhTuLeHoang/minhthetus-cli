@@ -3,7 +3,6 @@ package git
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/MinhTuLeHoang/minhthetus-cli/internal/git"
 	"github.com/MinhTuLeHoang/minhthetus-cli/internal/ui"
@@ -130,26 +129,9 @@ var DeleteBranchCmd = &cobra.Command{
 		// Execute local deletion
 		if deleteLocal {
 			fmt.Printf("%s Deleting local branch %s...\n", ui.HourglassIcon, ui.RedStyle().Render(currentBranch))
-			_, err = git.Run("branch", "-d", currentBranch)
+			_, err = git.Run("branch", "-D", currentBranch)
 			if err != nil {
-				// If standard delete fails (not fully merged), ask user to confirm force delete
-				if strings.Contains(err.Error(), "not fully merged") {
-					fmt.Printf("%s %s\n", ui.WarningMessage(""), fmt.Sprintf("Local branch '%s' is not fully merged.", currentBranch))
-					forceConfirmed, confirmErr := ui.Confirm("Do you want to force delete it (lose unmerged changes)?", 0, false)
-					if confirmErr == nil && forceConfirmed {
-						fmt.Printf("%s Force deleting local branch %s...\n", ui.HourglassIcon, ui.RedStyle().Render(currentBranch))
-						_, err = git.Run("branch", "-D", currentBranch)
-						if err != nil {
-							fmt.Printf("%s %s: %v\n", ui.ErrorMessage(""), ui.RedStyle().Render("Failed to force delete local branch"), err)
-						} else {
-							fmt.Printf("%s %s\n", ui.CheckIcon, ui.GreenStyle().Render(fmt.Sprintf("Successfully force deleted local branch %s.", currentBranch)))
-						}
-					} else {
-						fmt.Printf("%s Deletion of local branch %s skipped.\n", ui.InfoMessage(""), currentBranch)
-					}
-				} else {
-					fmt.Printf("%s %s: %v\n", ui.ErrorMessage(""), ui.RedStyle().Render("Failed to delete local branch"), err)
-				}
+				fmt.Printf("%s %s: %v\n", ui.ErrorMessage(""), ui.RedStyle().Render("Failed to delete local branch"), err)
 			} else {
 				fmt.Printf("%s %s\n", ui.CheckIcon, ui.GreenStyle().Render(fmt.Sprintf("Successfully deleted local branch %s.", currentBranch)))
 			}

@@ -29,11 +29,12 @@ minhthetus-cli git delete-branch
     *   If local deletion is selected:
         *   Auto-detects the repository's default branch (e.g., `main`, `master`, or `dev`).
         *   Switches to the default branch.
-        *   Deletes the target branch locally. If not fully merged, prompts the user to force delete.
+        *   Directly force-deletes the target branch locally.
 
 ## Version History
 * **First Stable Version Supported**: `v1.8.0`
-* **Latest Stable Version Update**: `v1.8.3`
+* **Latest Stable Version Update**: `v1.8.4`
 
+- **v1.8.4**: Force-delete local branch directly using `-D` to avoid prompt confirmations when the branch is not fully merged.
 - **v1.8.3**: Fixed space key toggle behavior in TUI multi-select menu and set default cursor to remote branch on startup.
 - **v1.8.0**: Introduced the git `delete-branch` command with smart remote protection and interactive TUI.
