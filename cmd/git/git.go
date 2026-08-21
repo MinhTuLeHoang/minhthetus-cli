@@ -24,4 +24,5 @@ func init() {
 	Cmd.AddCommand(ListRepoCmd)
 	Cmd.AddCommand(TreeCmd)
 	Cmd.AddCommand(RenameBranchCmd)
+	Cmd.AddCommand(DeleteBranchCmd)
 }

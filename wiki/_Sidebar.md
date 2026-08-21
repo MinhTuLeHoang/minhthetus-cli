@@ -6,6 +6,7 @@
 * [[Git-Account]]
 * [[Git-Backup-Branch]]
 * [[Git-Checkout]]
+* [[Git-Delete-Branch]]
 * [[Git-List-Repo]]
 * [[Git-Merge-Request]]
 * [[Git-Rename-Branch]]

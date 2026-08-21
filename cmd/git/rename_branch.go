@@ -3,8 +3,6 @@ package git
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/MinhTuLeHoang/minhthetus-cli/internal/git"
@@ -30,7 +28,7 @@ var RenameBranchCmd = &cobra.Command{
 		}
 
 		// 2. Check if current branch is protected
-		if isProtectedBranch(currentBranch) {
+		if git.IsProtectedBranch(currentBranch) {
 			fmt.Printf("%s %s\n", ui.ErrorMessage(""), ui.RedStyle().Render(fmt.Sprintf("Branch '%s' is a protected branch and cannot be renamed.", currentBranch)))
 			os.Exit(1)
 		}
@@ -68,18 +66,18 @@ var RenameBranchCmd = &cobra.Command{
 		}
 
 		// 6. Validate target branch name (check if it exists locally or on remote)
-		if branchExistsLocally(newBranch) {
+		if git.BranchExistsLocally(newBranch) {
 			fmt.Printf("%s %s\n", ui.ErrorMessage(""), ui.RedStyle().Render(fmt.Sprintf("Target branch '%s' already exists locally.", newBranch)))
 			os.Exit(1)
 		}
 
-		if branchExistsRemotely(newBranch) {
+		if git.BranchExistsRemotely(newBranch) {
 			fmt.Printf("%s %s\n", ui.ErrorMessage(""), ui.RedStyle().Render(fmt.Sprintf("Target branch '%s' already exists on remote origin.", newBranch)))
 			os.Exit(1)
 		}
 
 		// 7. Perform local and remote branch rename
-		remoteOldExists := branchExistsRemotely(currentBranch)
+		remoteOldExists := git.BranchExistsRemotely(currentBranch)
 
 		fmt.Printf("%s Renaming local branch from %s to %s...\n", ui.HourglassIcon, ui.CyanStyle().Render(currentBranch), ui.GreenStyle().Render(newBranch))
 
@@ -110,30 +108,3 @@ var RenameBranchCmd = &cobra.Command{
 	},
 }
 
-func isProtectedBranch(branch string) bool {
-	protectedNames := []string{"master", "main", "dev", "staging", "stg", "production", "prod"}
-	for _, p := range protectedNames {
-		if branch == p {
-			return true
-		}
-	}
-
-	if strings.HasPrefix(branch, "release") {
-		return true
-	}
-	matched, _ := filepath.Match("releases*", branch)
-	return matched
-}
-
-func branchExistsLocally(branch string) bool {
-	err := exec.Command("git", "show-ref", "--verify", "--quiet", "refs/heads/"+branch).Run()
-	return err == nil
-}
-
-func branchExistsRemotely(branch string) bool {
-	out, err := git.Run("ls-remote", "--heads", "origin", branch)
-	if err != nil {
-		return false
-	}
-	return len(strings.TrimSpace(out)) > 0
-}

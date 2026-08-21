@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-08-21
+
+### Added
+- git delete-branch subcommand to safely delete the current branch locally and on remote origin
+- git rename-branch subcommand to safely rename local and remote branches
+- Reusable ui.MultiChoose Bubble Tea multi-select component
+- Dynamic branch protection check logic using remote default branch and custom config
+
+### Changed
+- Refactored rename-branch command to use the new shared protection check helper
+
 ## [1.7.0] - 2026-08-21
 
 ### Added
