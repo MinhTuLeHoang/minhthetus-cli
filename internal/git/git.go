@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
@@ -54,7 +53,7 @@ func GetRemoteDefaultBranch() string {
 	return ""
 }
 
-// IsProtectedBranch checks if a branch is protected by checking the remote default branch and git config patterns.
+// IsProtectedBranch checks if a branch is protected by checking the remote default branch and querying remote provider APIs.
 func IsProtectedBranch(branch string) bool {
 	// 1. Check if it matches remote default branch
 	defaultBranch := GetRemoteDefaultBranch()
@@ -62,29 +61,60 @@ func IsProtectedBranch(branch string) bool {
 		return true
 	}
 
-	// 2. Check git config patterns
-	cfg, err := Run("config", "--get", "minhthetus-cli.protected-branches")
-	if err == nil && cfg != "" {
-		var patterns []string
-		for _, part := range strings.Split(cfg, ",") {
-			trimmed := strings.TrimSpace(part)
-			if trimmed != "" {
-				patterns = append(patterns, trimmed)
-			}
-		}
-		for _, pattern := range patterns {
-			if branch == pattern {
-				return true
-			}
-			matched, err := filepath.Match(pattern, branch)
-			if err == nil && matched {
-				return true
-			}
-		}
+	// 2. Resolve remote URL to check provider
+	remoteURL, err := Run("remote", "get-url", "origin")
+	if err != nil || remoteURL == "" {
+		return false
+	}
+
+	lowerURL := strings.ToLower(remoteURL)
+	if strings.Contains(lowerURL, "github") {
+		return checkGitHubProtected(branch)
+	} else if strings.Contains(lowerURL, "gitlab") {
+		return checkGitLabProtected(branch)
 	}
 
 	return false
 }
+
+func checkGitHubProtected(branch string) bool {
+	_, err := exec.LookPath("gh")
+	if err != nil {
+		return false
+	}
+
+	if err := exec.Command("gh", "auth", "status").Run(); err != nil {
+		return false
+	}
+
+	cmd := exec.Command("gh", "api", "repos/:owner/:repo/branches/"+branch, "--jq", ".protected")
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+
+	return strings.TrimSpace(stdout.String()) == "true"
+}
+
+func checkGitLabProtected(branch string) bool {
+	_, err := exec.LookPath("glab")
+	if err != nil {
+		return false
+	}
+
+	if err := exec.Command("glab", "auth", "status").Run(); err != nil {
+		return false
+	}
+
+	cmd := exec.Command("glab", "api", "projects/:id/protected_branches/"+branch)
+	if err := cmd.Run(); err == nil {
+		return true
+	}
+
+	return false
+}
+
 
 // BranchExistsLocally checks if a branch exists locally.
 func BranchExistsLocally(branch string) bool {

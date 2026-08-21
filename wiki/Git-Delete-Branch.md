@@ -15,7 +15,7 @@ minhthetus-cli git delete-branch
     *   Verifies that the current directory is a Git repository and retrieves the current branch name.
     *   Checks if the current branch is protected. A branch is considered protected if:
         *   It is the default branch of the remote origin (e.g. resolved via `refs/remotes/origin/HEAD`).
-        *   It matches any pattern configured under `git config --get minhthetus-cli.protected-branches` (supports glob/wildcard patterns like `release/*`).
+        *   It is configured as protected on the remote provider (GitHub or GitLab). The CLI checks the remote URL and queries the provider's API via `gh` or `glab` (if the tools are installed and logged in). If they are not logged in or not found, this check is gracefully bypassed.
     *   If protected, aborts.
 2.  **Working Tree Cleanliness Check**:
     *   Retrieves the status of the repository's working tree. If local deletion is selected and there are uncommitted changes, aborts to prevent data loss.
