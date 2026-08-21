@@ -8,6 +8,7 @@
 * [[Git-Checkout]]
 * [[Git-List-Repo]]
 * [[Git-Merge-Request]]
+* [[Git-Rename-Branch]]
 * [[Git-Sync-Branch]]
 * [[Git-Tag-Dev-Stg]]
 * [[Git-Tree]]
