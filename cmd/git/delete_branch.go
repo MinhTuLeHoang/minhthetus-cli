@@ -49,7 +49,7 @@ var DeleteBranchCmd = &cobra.Command{
 			fmt.Sprintf("Remote branch (origin/%s)", currentBranch),
 		}
 		preselected := []bool{true, false} // default select local, remote unselected
-		selections, err := ui.MultiChoose("Select targets to delete:", options, preselected)
+		selections, err := ui.MultiChoose("Select targets to delete:", options, preselected, 1)
 		if err != nil {
 			fmt.Printf("%s %s\n", ui.ErrorMessage(""), "Cancelled or failed to read selection.")
 			os.Exit(1)

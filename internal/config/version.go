@@ -2,7 +2,7 @@ package config
 
 const (
 	// Version is the current stable version of minhthetus-cli
-	Version = "1.8.2"
+	Version = "1.8.3"
 	// BuildDate is the release date of the current stable version
 	BuildDate = "2026-08-21"
 )

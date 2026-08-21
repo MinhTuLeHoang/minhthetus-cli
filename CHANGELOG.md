@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.3] - 2026-08-21
+
+### Changed
+- Set default cursor to Remote branch on startup in git delete-branch
+
+### Fixed
+- Fixed space key toggle behavior in TUI multi-select menu
+
 ## [1.8.2] - 2026-08-21
 
 ### Changed

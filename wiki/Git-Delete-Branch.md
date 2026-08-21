@@ -22,7 +22,7 @@ minhthetus-cli git delete-branch
 3.  **TUI Target Selection**:
     *   Prompts the user with a multi-select menu to choose deletion targets:
         *   `Local branch` (default selected)
-        *   `Remote branch (origin/<branch-name>)`
+        *   `Remote branch (origin/<branch-name>)` (the cursor starts focused here on startup in `v1.8.3+`)
 4.  **Confirmation and Deletion**:
     *   If remote deletion is selected, requests user confirmation.
     *   If remote deletion is confirmed, deletes the remote branch.
@@ -33,4 +33,7 @@ minhthetus-cli git delete-branch
 
 ## Version History
 * **First Stable Version Supported**: `v1.8.0`
-* **Latest Stable Version Update**: `v1.8.0`
+* **Latest Stable Version Update**: `v1.8.3`
+
+- **v1.8.3**: Fixed space key toggle behavior in TUI multi-select menu and set default cursor to remote branch on startup.
+- **v1.8.0**: Introduced the git `delete-branch` command with smart remote protection and interactive TUI.
