@@ -14,6 +14,7 @@ Use the sidebar on the right or the links below to explore specific features:
 *   [[Git-Account]]: Switch and manage multiple Git identities.
 *   [[Git-Backup-Branch]]: Safely back up local branches to remote.
 *   [[Git-Checkout]]: Interactive TUI-based checkout with JIRA issue search.
+*   [[Git-Delete-Branch]]: Safely delete the current Git branch locally and/or on remote origin.
 *   [[Git-List-Repo]]: List local repositories and check their sync status.
 *   [[Git-Merge-Request]]: Interactively draft, test, and submit GitLab Merge Requests.
 *   [[Git-Rename-Branch]]: Safely rename the current Git branch both locally and on the remote origin.
