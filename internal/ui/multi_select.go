@@ -35,7 +35,7 @@ func (m multiChooseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.cursor = 0
 			}
-		case "space":
+		case " ":
 			m.selected[m.cursor] = !m.selected[m.cursor]
 		case "enter":
 			m.quitting = true
@@ -80,7 +80,7 @@ func (m multiChooseModel) View() string {
 }
 
 // MultiChoose displays a list of options allowing multi-selection using space, and returns a boolean slice of selections.
-func MultiChoose(title string, options []string, preselected []bool) ([]bool, error) {
+func MultiChoose(title string, options []string, preselected []bool, initialCursor int) ([]bool, error) {
 	selected := make([]bool, len(options))
 	copy(selected, preselected)
 
@@ -88,6 +88,7 @@ func MultiChoose(title string, options []string, preselected []bool) ([]bool, er
 		title:    title,
 		options:  options,
 		selected: selected,
+		cursor:   initialCursor,
 	}
 
 	p := tea.NewProgram(m)
