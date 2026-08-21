@@ -32,5 +32,5 @@ minhthetus-cli git delete-branch
         *   Deletes the target branch locally. If not fully merged, prompts the user to force delete.
 
 ## Version History
-* **First Stable Version Supported**: `v1.7.0`
-* **Latest Stable Version Update**: `v1.7.0`
+* **First Stable Version Supported**: `v1.8.0`
+* **Latest Stable Version Update**: `v1.8.0`

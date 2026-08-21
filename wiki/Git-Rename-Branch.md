@@ -27,4 +27,7 @@ minhthetus-cli git rename-branch
 
 ## Version History
 * **First Stable Version Supported**: `v1.7.0`
-* **Latest Stable Version Update**: `v1.7.0`
+* **Latest Stable Version Update**: `v1.8.0`
+
+- **v1.8.0**: Improve branch protection rules, add support for multiple Git providers
+- **v1.7.0**: Introduced the rename command.
