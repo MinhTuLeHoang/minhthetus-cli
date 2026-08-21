@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.2] - 2026-08-21
+
+### Changed
+- Configure Release Tagger workflow to use WIKI_SYNC_TOKEN PAT for tag push, enabling downstream auto-triggers
+
 ## [1.8.1] - 2026-08-21
 
 ### Added
