@@ -1,0 +1,64 @@
+name: Release Tagger
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Detect Version and Check for Change
+        id: check_version
+        run: |
+          # Extract version from version.go
+          VERSION=$(grep -E 'Version\s*=' internal/config/version.go | sed -E 's/.*Version\s*=\s*"([^"]+)".*/\1/')
+          echo "config_version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Detected Version in config: $VERSION"
+
+          # Get latest stable tag
+          git fetch --tags
+          LATEST_TAG=$(git tag -l "v*" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          echo "Latest tag: $LATEST_TAG"
+
+          if [ "v$VERSION" = "$LATEST_TAG" ]; then
+            echo "Version $VERSION is already tagged as $LATEST_TAG. Skipping tagging."
+            echo "should_tag=false" >> $GITHUB_OUTPUT
+          else
+            echo "New version detected: $VERSION (Latest tag is $LATEST_TAG)"
+            echo "should_tag=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create and Push Release Tag
+        if: steps.check_version.outputs.should_tag == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${{ steps.check_version.outputs.config_version }}
+          
+          # Find the PR URL that was merged
+          PR_URL=$(gh pr list --search "${{ github.sha }}" --state merged --json url --jq '.[0].url')
+          if [ -z "$PR_URL" ]; then
+            # Fallback if no PR found
+            PR_URL="https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
+          fi
+          echo "PR URL: $PR_URL"
+
+          # Configure Git user
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Create annotated tag and push
+          git tag -a "v$VERSION" -m "Release v$VERSION - $PR_URL"
+          git push origin "v$VERSION"
+          echo "Successfully tagged and pushed v$VERSION!"

@@ -111,18 +111,10 @@ The script will automatically update the version constants, prepend the changelo
    - Updated GUIDE_NEW_CLI.md with flag autocomplete guidelines." --base master --head <feature-branch> --assignee "@me" --label "documentation" --label "enhancement"
    ```
 2. **PAUSE & Wait for Merge**: Ask the user to review and merge the PR. Do not auto-merge.
-3. **Checkout Master, Pull & Tag**: Once the user confirms the PR is merged:
-   - Switch back to master and pull the updates:
+3. **Automatic Tagging & Verification**: Once the PR is merged:
+   - The GitHub Actions workflow `Release Tagger` automatically detects the version change, creates the annotated release tag `v<new-version>` with the merged PR URL, and pushes it.
+   - The `sync-wiki` and `bump-homebrew` workflows are automatically triggered by the pushed tag.
+   - Switch back to master locally, pull the updates, and compile the local build to verify correctness:
      ```bash
-     git checkout master && git pull origin master
+     git checkout master && git pull origin master && make build-dev
      ```
-   - Compile local build to verify correctness:
-     ```bash
-     make build-dev
-     ```
-   - Tag the new version (including the merged PR URL in the message) and push to remote:
-     ```bash
-     git tag -a v<new-version> -m "Release v<new-version> - <Merged-PR-URL>"
-     git push origin v<new-version>
-     ```
-   - Wiki documentation is auto-synced to GitHub Wiki via the `sync-wiki` GitHub Actions workflow when a `v*` tag is pushed. No manual step needed.

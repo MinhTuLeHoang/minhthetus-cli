@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-08-21
+
+### Added
+- GitHub Actions CI workflow for PR build and test
+- GitHub Actions Release Tagger workflow for automated release tagging
+
+### Changed
+- Update merge-publish skill checklist to use automated release tagging
+
 ## [1.8.0] - 2026-08-21
 
 ### Added
