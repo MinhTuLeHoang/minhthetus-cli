@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-08-21
+
+### Added
+- git delete-branch subcommand to safely delete the current branch locally and on remote origin
+- Reusable ui.MultiChoose Bubble Tea multi-select component
+- Dynamic branch protection check logic using remote provider APIs (gh/glab)
+- Support for self-hosted custom Git domains (e.g. github.zalopay.vn)
+
 ## [1.7.0] - 2026-08-21
 
 ### Added
