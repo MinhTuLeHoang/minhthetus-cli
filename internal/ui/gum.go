@@ -14,6 +14,24 @@ func GumChoose(options ...string) string {
 	return choice
 }
 
+// GumChooseWithDefault opens a choose menu with a default option index using native TUI
+func GumChooseWithDefault(defaultIndex int, options ...string) string {
+	choice, err := ChooseWithDefault("Select an option:", options, defaultIndex)
+	if err != nil {
+		return ""
+	}
+	return choice
+}
+
+// GumChooseWithTitleAndDefault opens a choose menu with a custom title and default option index using native TUI
+func GumChooseWithTitleAndDefault(title string, defaultIndex int, options ...string) string {
+	choice, err := ChooseWithDefault(title, options, defaultIndex)
+	if err != nil {
+		return ""
+	}
+	return choice
+}
+
 // GumConfirm opens a confirm dialog using native TUI
 func GumConfirm(prompt string) bool {
 	confirmed, err := Confirm(prompt, 0, false)
