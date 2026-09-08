@@ -51,11 +51,22 @@ minhthetus-cli git tag-dev-stg`,
 		fmt.Printf("%s Base version identified: %s\n", ui.InfoMessage(""), ui.GreenStyle().Render(baseVer))
 
 		// 2. Increment logic
-		incType := "minor"
+		var incType string
 		if patchInc {
 			incType = "patch"
+		} else if minorInc {
+			incType = "minor"
 		} else if majorInc {
 			incType = "major"
+		} else {
+			options := []string{"major", "minor", "patch"}
+			fmt.Println("")
+			choice := ui.GumChooseWithTitleAndDefault("Select version bump type:", 2, options...)
+			if choice == "" {
+				fmt.Printf("%s Version selection cancelled.\n", ui.WarningMessage(""))
+				return
+			}
+			incType = choice
 		}
 
 		newVer := incrementVersion(baseVer, incType)
@@ -110,7 +121,7 @@ minhthetus-cli git tag-dev-stg`,
 
 func init() {
 	TagDevStgCmd.Flags().BoolVarP(&patchInc, "patch", "P", false, "Increment the patch version (e.g. 1.0.0 -> 1.0.1)")
-	TagDevStgCmd.Flags().BoolVarP(&minorInc, "minor", "N", false, "Increment the minor version (e.g. 1.0.0 -> 1.1.0) [Default]")
+	TagDevStgCmd.Flags().BoolVarP(&minorInc, "minor", "N", false, "Increment the minor version (e.g. 1.0.0 -> 1.1.0)")
 	TagDevStgCmd.Flags().BoolVarP(&majorInc, "major", "M", false, "Increment the major version (e.g. 1.0.0 -> 2.0.0)")
 	TagDevStgCmd.Flags().StringVarP(&message, "message", "m", "", "Provide a custom tag message")
 	

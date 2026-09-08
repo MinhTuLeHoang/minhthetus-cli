@@ -10,7 +10,7 @@ minhthetus-cli git tag-dev-stg [options]
 ## Options
 
 *   `-P, --patch`: Increment the patch version (e.g. 1.0.0 → 1.0.1).
-*   `-N, --minor`: Increment the minor version (e.g. 1.0.0 → 1.1.0). (Default)
+*   `-N, --minor`: Increment the minor version (e.g. 1.0.0 → 1.1.0).
 *   `-M, --major`: Increment the major version (e.g. 1.0.0 → 2.0.0).
 *   `-m, --message <msg>`: Provide a custom tag message. Defaults to `Release v<version>` if omitted.
 *   `-h, --help`: Show the help message and exit.
@@ -23,7 +23,7 @@ minhthetus-cli git tag-dev-stg [options]
     *   Displays the latest STG and QC tags found (or "None" if absent).
 2.  **Increment Logic**:
     *   Applies the specified increment (Major/Minor/Patch) to the base version to calculate `NEW_VERSION`.
-    *   Defaults to minor increment if no flag is provided.
+    *   If no flag is provided, displays an interactive prompt asking the user to choose Major, Minor, or Patch (with cursor defaulting to Patch).
 3.  **Metadata**:
     *   If `--message` is not provided, prompts the user for a tag message.
     *   Defaults to `Release v<NEW_VERSION>` if left blank.
@@ -41,4 +41,4 @@ minhthetus-cli git tag-dev-stg [options]
 ## Version History
 
 * **First Stable Version Supported**: `v1.0.0`
-* **Latest Stable Version Update**: `v1.0.0`
+* **Latest Stable Version Update**: `v1.8.5`

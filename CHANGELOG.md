@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.5] - 2026-09-08
+
+### Added
+- Interactive version bump selection prompt (defaulting to patch) when no flags are passed to tag-dev-stg command
+- ChooseWithDefault UI helper function for native TUI cursor placement
+
+### Changed
+- Updated git tag-dev-stg wiki documentation
+
 ## [1.8.4] - 2026-08-21
 
 ### Changed

@@ -137,13 +137,17 @@ func (m simpleChooseModel) View() string {
 	return s
 }
 
-// Choose displays a list of options and returns the selected one.
+// ChooseWithDefault displays a list of options and returns the selected one with a default selected cursor index.
 // It automatically switches to a compact inline layout for 7 or fewer options to avoid scrolling issues.
-func Choose(title string, options []string) (string, error) {
+func ChooseWithDefault(title string, options []string, defaultIndex int) (string, error) {
+	if defaultIndex < 0 || defaultIndex >= len(options) {
+		defaultIndex = 0
+	}
 	if len(options) <= 7 {
 		m := simpleChooseModel{
 			title:   title,
 			options: options,
+			cursor:  defaultIndex,
 		}
 		p := tea.NewProgram(m)
 		finalModel, err := p.Run()
@@ -163,6 +167,7 @@ func Choose(title string, options []string) (string, error) {
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(true)
 	l.Styles.Title = titleStyle
+	l.Select(defaultIndex)
 
 	m := selectModel{list: l}
 
@@ -173,4 +178,10 @@ func Choose(title string, options []string) (string, error) {
 	}
 
 	return finalModel.(selectModel).choice, nil
+}
+
+// Choose displays a list of options and returns the selected one.
+// It automatically switches to a compact inline layout for 7 or fewer options to avoid scrolling issues.
+func Choose(title string, options []string) (string, error) {
+	return ChooseWithDefault(title, options, 0)
 }
