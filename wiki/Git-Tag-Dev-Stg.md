@@ -42,3 +42,6 @@ minhthetus-cli git tag-dev-stg [options]
 
 * **First Stable Version Supported**: `v1.0.0`
 * **Latest Stable Version Update**: `v1.8.5`
+
+- **v1.8.5**: Added interactive version bump selection (Major, Minor, Patch) with keyboard selection when no CLI flag is passed.
+- **v1.0.0**: Introduced the git `tag-dev-stg` command for automated STG/QC tagging.
