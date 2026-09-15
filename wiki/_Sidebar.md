@@ -9,6 +9,7 @@
 * [[Git-Delete-Branch]]
 * [[Git-List-Repo]]
 * [[Git-Merge-Request]]
+* [[Git-Rebase-Master]]
 * [[Git-Rename-Branch]]
 * [[Git-Sync-Branch]]
 * [[Git-Tag-Dev-Stg]]

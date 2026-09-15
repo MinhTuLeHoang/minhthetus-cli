@@ -25,4 +25,5 @@ func init() {
 	Cmd.AddCommand(TreeCmd)
 	Cmd.AddCommand(RenameBranchCmd)
 	Cmd.AddCommand(DeleteBranchCmd)
+	Cmd.AddCommand(RebaseMasterCmd)
 }

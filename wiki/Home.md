@@ -17,6 +17,7 @@ Use the sidebar on the right or the links below to explore specific features:
 *   [[Git-Delete-Branch]]: Safely delete the current Git branch locally and/or on remote origin.
 *   [[Git-List-Repo]]: List local repositories and check their sync status.
 *   [[Git-Merge-Request]]: Interactively draft, test, and submit GitLab Merge Requests.
+*   [[Git-Rebase-Master]]: Rebase current branch onto master and force push if successful, or abort on conflict.
 *   [[Git-Rename-Branch]]: Safely rename the current Git branch both locally and on the remote origin.
 *   [[Git-Sync-Branch]]: Keep local branches fully in sync with remote.
 *   [[Git-Tag-Dev-Stg]]: Manage deployment tags for dev and staging.
