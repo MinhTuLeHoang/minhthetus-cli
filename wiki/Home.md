@@ -1,6 +1,6 @@
 # Welcome to the minhthetus-cli Wiki!
 
-![Version](https://img.shields.io/badge/version-v1.8.5-green) ![Language](https://img.shields.io/badge/language-Go-00ADD8.svg?style=flat&logo=go) ![License](https://img.shields.io/badge/license-MIT-blue)
+![Version](https://img.shields.io/badge/version-v1.9.0-green) ![Language](https://img.shields.io/badge/language-Go-00ADD8.svg?style=flat&logo=go) ![License](https://img.shields.io/badge/license-MIT-blue)
 
 A professional, high-performance CLI tool designed for automation and developer productivity, written natively in Go.
 
@@ -17,6 +17,7 @@ Use the sidebar on the right or the links below to explore specific features:
 *   [[Git-Delete-Branch]]: Safely delete the current Git branch locally and/or on remote origin.
 *   [[Git-List-Repo]]: List local repositories and check their sync status.
 *   [[Git-Merge-Request]]: Interactively draft, test, and submit GitLab Merge Requests.
+*   [[Git-Rebase-Master]]: Rebase current branch onto master and force push if successful, or abort on conflict.
 *   [[Git-Rename-Branch]]: Safely rename the current Git branch both locally and on the remote origin.
 *   [[Git-Sync-Branch]]: Keep local branches fully in sync with remote.
 *   [[Git-Tag-Dev-Stg]]: Manage deployment tags for dev and staging.
