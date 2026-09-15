@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-09-15
+
+### Added
+- Add rebase-master command to rebase onto origin/HEAD with conflict safety checks and force-push
+
 ## [1.8.5] - 2026-09-08
 
 ### Added
