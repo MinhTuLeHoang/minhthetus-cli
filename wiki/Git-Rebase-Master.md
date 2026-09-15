@@ -37,5 +37,5 @@ minhthetus-cli git rebase-master
 
 ## Version History
 
-* **First Stable Version Supported**: `v1.8.5`
-* **Latest Stable Version Update**: `v1.8.5`
+* **First Stable Version Supported**: `v1.9.0`
+* **Latest Stable Version Update**: `v1.9.0`
