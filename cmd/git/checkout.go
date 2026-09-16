@@ -87,6 +87,32 @@ minhthetus-cli git checkout`,
 		// --- Creation ---
 		fmt.Println("\nℹ️  No existing branch found. Entering creation flow...")
 
+		currentBranch, err := git.Run("rev-parse", "--abbrev-ref", "HEAD")
+		if err != nil {
+			fmt.Printf("Error getting current branch: %v\n", err)
+			return
+		}
+
+		mainBranch := git.GetMainBranch()
+
+		sourceBranch := currentBranch
+		if currentBranch != mainBranch && !strings.HasPrefix(currentBranch, "releases/") {
+			fmt.Printf("Source branch to create from (current branch): %s\n", ui.CyanStyle().Render(currentBranch))
+			options := []string{
+				"yes - create from current branch",
+				fmt.Sprintf("%s - create from %s", mainBranch, mainBranch),
+				"no - cancel",
+			}
+			choice, err := ui.Choose("Confirm source branch:", options)
+			if err != nil || choice == "" || strings.HasPrefix(choice, "no") {
+				fmt.Println("❌ Creation cancelled.")
+				return
+			}
+			if strings.HasPrefix(choice, mainBranch) {
+				sourceBranch = mainBranch
+			}
+		}
+
 		types := []string{"feature", "features", "hotfix", "test", "docs", "improve", "bugfix", "refactor"}
 		branchType, err := ui.Choose("Select branch type:", types)
 		if err != nil || branchType == "" {
@@ -107,30 +133,6 @@ minhthetus-cli git checkout`,
 		finalName := branchType + "/" + formattedDesc
 		if jiraID != "" {
 			finalName = branchType + "/" + jiraID + "-" + formattedDesc
-		}
-
-		currentBranch, err := git.Run("rev-parse", "--abbrev-ref", "HEAD")
-		if err != nil {
-			fmt.Printf("Error getting current branch: %v\n", err)
-			return
-		}
-
-		sourceBranch := currentBranch
-		if currentBranch != "master" && !strings.HasPrefix(currentBranch, "releases/") {
-			fmt.Printf("Source branch to create from (current branch): %s\n", ui.CyanStyle().Render(currentBranch))
-			options := []string{
-				"yes - create from current branch",
-				"master - create from master",
-				"no - cancel",
-			}
-			choice, err := ui.Choose("Confirm source branch:", options)
-			if err != nil || choice == "" || strings.HasPrefix(choice, "no") {
-				fmt.Println("❌ Creation cancelled.")
-				return
-			}
-			if strings.HasPrefix(choice, "master") {
-				sourceBranch = "master"
-			}
 		}
 
 		fmt.Printf("⏳ Creating and checking out: %s from %s...\n", ui.CyanStyle().Render(finalName), ui.CyanStyle().Render(sourceBranch))
