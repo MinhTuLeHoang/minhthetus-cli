@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/MinhTuLeHoang/minhthetus-cli/cmd/git"
+	"github.com/MinhTuLeHoang/minhthetus-cli/cmd/project"
 	"github.com/MinhTuLeHoang/minhthetus-cli/cmd/sys"
 	"github.com/MinhTuLeHoang/minhthetus-cli/cmd/vng"
 	"github.com/MinhTuLeHoang/minhthetus-cli/cmd/web"
@@ -36,6 +37,7 @@ func Execute() {
 
 	// Register commands from sub-packages
 	rootCmd.AddCommand(git.Cmd)
+	rootCmd.AddCommand(project.Cmd)
 	rootCmd.AddCommand(sys.Cmd)
 	rootCmd.AddCommand(web.Cmd)
 	rootCmd.AddCommand(vng.Cmd)
