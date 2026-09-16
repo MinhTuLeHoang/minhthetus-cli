@@ -34,4 +34,6 @@ Version: 1
 ```
 
 ## Version History
-- **v2.x.x**: Introduced `project navigate-link` feature.
+
+* **First Stable Version Supported**: `v1.10.0`
+* **Latest Stable Version Update**: `v1.10.0`
