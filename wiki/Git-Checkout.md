@@ -26,23 +26,23 @@ minhthetus-cli git checkout [options]
     *   If exactly one match is found, checks it out immediately and pulls latest updates from origin.
     *   If multiple matches are found, prompts the user to select one using the interactive list selector.
 3.  **Create New Branch (If no match)**:
-    *   If no matching branch is found or JIRA ID was skipped, enters the creation flow.
-4.  **Select Branch Type**:
+    *   If no matching branch is found or JIRA ID was skipped, enters the creation flow. Automatically resolves the default main branch (`origin/HEAD`, falling back to `main` or `master`).
+4.  **Branch Source Confirmation**: (Supported from v1.4.2, updated in v1.9.1)
+    *   Executed at the beginning of the creation flow. If the current branch is not the default main branch and doesn't start with `releases/`, prompts the user to select the source branch from 3 options:
+        *   `yes - create from current branch`: Uses the current active branch as the source.
+        *   `<main> - create from <main>`: Uses the default main branch (e.g. `main` or `master`) as the source branch.
+        *   `no - cancel`: Aborts the creation flow.
+    *   Logs the current branch as the source branch during confirmation.
+5.  **Select Branch Type**:
     *   Prompts the user to select a type: `feature`, `features`, `hotfix`, `test`, `docs`, `improve`, `bugfix`, `refactor` using the list selector.
-5.  **Enter Branch Description**:
+6.  **Enter Branch Description**:
     *   Prompts the user for a brief description (e.g., "update user profile").
-6.  **Formatting & Naming**:
+7.  **Formatting & Naming**:
     *   Converts the description to lowercase.
     *   Replaces spaces with dashes and removes special characters.
     *   Constructs the final branch name:
         *   With JIRA: `<type>/<jira-id>-<formatted-description>`
         *   Without JIRA: `<type>/<formatted-description>`
-7.  **Branch Source Confirmation**: (Supported from v1.4.2)
-    *   If the current branch is not `master` and doesn't start with `releases/`, prompts the user to select the source branch from 3 options:
-        *   `yes - create from current branch`: Uses the current active branch as the source.
-        *   `master - create from master`: Uses `master` as the source branch.
-        *   `no - cancel`: Aborts the creation flow.
-    *   Logs the current branch as the source branch during confirmation.
 8.  **Final Checkout**:
     *   Creates and checks out the new branch locally from the selected source branch.
     *   Pushes the new branch to `origin`.
@@ -51,7 +51,8 @@ minhthetus-cli git checkout [options]
 ## Version History
 
 * **First Stable Version Supported**: `v1.0.0`
-* **Latest Stable Version Update**: `v1.4.2`
+* **Latest Stable Version Update**: `v1.9.1`
 
+- **v1.9.1**: Updated branch source confirmation to execute at the start of creation flow and dynamically detect default main branch from `origin/HEAD` (supporting `main` branch repositories).
 - **v1.4.2**: Added confirmation prompt with options (current, master, cancel) when creating a new branch from a non-master/non-release branch, and added source branch summary logs.
 - **v1.0.0**: Introduced the checkout command.

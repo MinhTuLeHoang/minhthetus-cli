@@ -53,6 +53,26 @@ func GetRemoteDefaultBranch() string {
 	return ""
 }
 
+// GetMainBranch returns the default main branch name from origin/HEAD, or falls back to local/remote main/master/dev.
+func GetMainBranch() string {
+	defaultBranch := GetRemoteDefaultBranch()
+	if defaultBranch == "" {
+		Run("remote", "set-head", "origin", "--auto")
+		defaultBranch = GetRemoteDefaultBranch()
+	}
+	if defaultBranch != "" {
+		return defaultBranch
+	}
+
+	for _, b := range []string{"main", "master"} {
+		if BranchExistsLocally(b) || BranchExistsRemotely(b) {
+			return b
+		}
+	}
+
+	return "master"
+}
+
 // IsProtectedBranch checks if a branch is protected by checking the remote default branch and querying remote provider APIs.
 func IsProtectedBranch(branch string) bool {
 	// 1. Check if it matches remote default branch
