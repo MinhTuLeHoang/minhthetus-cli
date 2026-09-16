@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-09-16
+
+### Changed
+- Detect default main branch from origin/HEAD dynamically and check source branch before inputting branch options during checkout
+
 ## [1.9.0] - 2026-09-15
 
 ### Added
