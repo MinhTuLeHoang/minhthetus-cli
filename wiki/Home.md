@@ -1,6 +1,6 @@
 # Welcome to the minhthetus-cli Wiki!
 
-![Version](https://img.shields.io/badge/version-v1.9.1-green) ![Language](https://img.shields.io/badge/language-Go-00ADD8.svg?style=flat&logo=go) ![License](https://img.shields.io/badge/license-MIT-blue)
+![Version](https://img.shields.io/badge/version-v1.10.0-green) ![Language](https://img.shields.io/badge/language-Go-00ADD8.svg?style=flat&logo=go) ![License](https://img.shields.io/badge/license-MIT-blue)
 
 A professional, high-performance CLI tool designed for automation and developer productivity, written natively in Go.
 
@@ -27,6 +27,9 @@ Use the sidebar on the right or the links below to explore specific features:
 *   [[Web-Install]]: Install standard frontend package dependencies.
 *   [[Web-Start]]: Start local development servers with high responsiveness.
 *   [[Web-Build]]: Compile production builds for web applications.
+
+### Project Tools
+*   [[Project-Navigate-Link]]: Navigate to project-related links defined in RELATED_TOOL_LINK.md.
 
 ### Remote Utilities
 *   [[Remote-Scripts-Utils-GenQR]]: Generate QR codes from text/URLs directly in the terminal.

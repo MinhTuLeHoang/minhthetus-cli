@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-09-16
+
+### Added
+- Added project navigate-link command to manage and launch project tool links
+
 ## [1.9.1] - 2026-09-16
 
 ### Changed

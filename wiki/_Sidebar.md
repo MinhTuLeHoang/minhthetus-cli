@@ -25,6 +25,9 @@
 * [[Sys-Clean-My-Mac]]
 * [[Sys-Host]]
 
+### 🗂 Project Subcommands
+* [[Project-Navigate-Link]]
+
 ### 🛠 Other
 * [[Remote-Scripts-Utils-GenQR]]
 
