@@ -21,6 +21,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.WIKI_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
       - name: Setup Go
@@ -68,7 +69,7 @@ jobs:
 
       - name: Publish GitHub Release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.WIKI_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ github.event.inputs.tag_name || github.ref_name }}"
 
