@@ -19,4 +19,5 @@ jobs:
         with:
           identifier: MinhTuLeHoang.minhthetus-cli
           version: ${{ github.event.inputs.tag_name || github.event.release.tag_name }}
+          installers-regex: '\.(exe|zip)$'
           token: ${{ secrets.WINGET_TOKEN || secrets.GITHUB_TOKEN }}
