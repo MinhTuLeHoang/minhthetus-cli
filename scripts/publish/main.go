@@ -214,11 +214,11 @@ const (
 	fmt.Printf("\n🚀 Pushing branch '%s' to origin remote...\n", currentBranch)
 	pushOut, err := runCmd("git", "push", "origin", currentBranch)
 	if err != nil {
-		fmt.Printf("❌ Error pushing branch to origin: %s\n", pushOut)
-		fmt.Println("⚠️ Please resolve remote connection and manually push the branch.")
-		os.Exit(1)
+		fmt.Printf("⚠️ Note: Branch push to origin could not complete automatically: %s\n", pushOut)
+		fmt.Println("👉 Please run 'git push origin " + currentBranch + "' manually after this step.")
+	} else {
+		fmt.Println("  ✓ Branch successfully pushed to remote.")
 	}
-	fmt.Println("  ✓ Branch successfully pushed to remote.")
 
 	// 11. Compile local build to verify correctness and update local binary
 	fmt.Println("\n🛠 Compiling local developer build...")
