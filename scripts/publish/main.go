@@ -177,13 +177,25 @@ const (
 		newChangelogEntries.WriteString("- Routine maintenance and version bump.\n\n")
 	}
 
-	unreleasedHeader := "## [Unreleased]\n\n"
 	changelogContentStr := string(existingChangelog)
-	index := strings.Index(changelogContentStr, unreleasedHeader)
-	if index == -1 {
-		index = 0
-	} else {
-		index += len(unreleasedHeader)
+	unreleasedMarker := "## [Unreleased]"
+	unreleasedIdx := strings.Index(changelogContentStr, unreleasedMarker)
+	index := 0
+	if unreleasedIdx != -1 {
+		rest := changelogContentStr[unreleasedIdx+len(unreleasedMarker):]
+		skipped := 0
+		for i, ch := range rest {
+			if ch == '\n' {
+				skipped++
+				if skipped == 2 {
+					index = unreleasedIdx + len(unreleasedMarker) + i + 1
+					break
+				}
+			}
+		}
+		if index == 0 {
+			index = unreleasedIdx + len(unreleasedMarker)
+		}
 	}
 
 	updatedChangelog := changelogContentStr[:index] + newChangelogEntries.String() + changelogContentStr[index:]
@@ -214,11 +226,11 @@ const (
 	fmt.Printf("\n🚀 Pushing branch '%s' to origin remote...\n", currentBranch)
 	pushOut, err := runCmd("git", "push", "origin", currentBranch)
 	if err != nil {
-		fmt.Printf("❌ Error pushing branch to origin: %s\n", pushOut)
-		fmt.Println("⚠️ Please resolve remote connection and manually push the branch.")
-		os.Exit(1)
+		fmt.Printf("⚠️ Note: Branch push to origin could not complete automatically: %s\n", pushOut)
+		fmt.Println("👉 Please run 'git push origin " + currentBranch + "' manually after this step.")
+	} else {
+		fmt.Println("  ✓ Branch successfully pushed to remote.")
 	}
-	fmt.Println("  ✓ Branch successfully pushed to remote.")
 
 	// 11. Compile local build to verify correctness and update local binary
 	fmt.Println("\n🛠 Compiling local developer build...")

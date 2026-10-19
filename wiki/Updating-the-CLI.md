@@ -17,6 +17,7 @@ minhthetus-cli update
 ### What it does:
 - **Version Check**: First queries the latest version online (from GitHub raw files and fallback API) to check if an update is needed. If you are already up to date, it informs you and stops, avoiding redundant downloads/compilations.
 - **Homebrew**: Automatically runs `brew upgrade minhthetus-cli` for you.
+- **WinGet**: Automatically runs `winget upgrade MinhTuLeHoang.minhthetus-cli` for you.
 - **Go toolchain**: Automatically runs `go install github.com/MinhTuLeHoang/minhthetus-cli@latest` to compile the newest version.
 - **Manual Build**: If you are inside the cloned repository, it will offer to run `git pull && make install`. If you are outside the repository, it will guide you on what to do.
 
@@ -26,7 +27,7 @@ minhthetus-cli update
 
 If you prefer to perform the update manually or if the built-in command encounters permission issues, use one of the methods below matching your installation style:
 
-### Method 1: Homebrew (Recommended)
+### Method 1: Homebrew (macOS / Linux)
 
 If you installed via Homebrew:
 
@@ -38,7 +39,16 @@ brew update
 brew upgrade minhthetus-cli
 ```
 
-### Method 2: Go toolchain
+### Method 2: WinGet (Windows)
+
+If you installed via Windows Package Manager:
+
+```powershell
+# Upgrade minhthetus-cli
+winget upgrade MinhTuLeHoang.minhthetus-cli
+```
+
+### Method 3: Go toolchain
 
 If you installed via `go install`:
 
@@ -49,7 +59,7 @@ go install github.com/MinhTuLeHoang/minhthetus-cli@latest
 > [!TIP]
 > Ensure your `~/go/bin` directory is in your shell's `PATH` to access the updated binary immediately.
 
-### Method 3: Manual Installation (From Source clone)
+### Method 4: Manual Installation (From Source clone)
 
 If you manually cloned the repository:
 
@@ -90,7 +100,8 @@ sudo make install
 ## Version History
 
 * **First Stable Version Supported**: `v1.3.0`
-* **Latest Stable Version Update**: `v1.3.2`
+* **Latest Stable Version Update**: `v1.11.0`
 
+- **v1.11.0**: Added Windows Package Manager (WinGet) upgrade and uninstallation detection to the native CLI.
 - **v1.3.2**: Added pre-update version checking logic to verify if an update is actually needed before performing the update.
 - **v1.3.0**: Introduced the built-in `update` command and native update automation workflows.

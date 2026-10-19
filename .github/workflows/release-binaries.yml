@@ -1,0 +1,82 @@
+name: Release Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name to build and release (e.g. v1.9.1)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.WIKI_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Build Cross-Platform Binaries
+        run: |
+          TAG="${{ github.event.inputs.tag_name || github.ref_name }}"
+          echo "Building binaries for tag: $TAG"
+
+          mkdir -p dist/archives
+
+          # Windows amd64 (Required for WinGet x64)
+          mkdir -p dist/windows-amd64
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/windows-amd64/minhthetus-cli.exe main.go
+          (cd dist/windows-amd64 && zip ../archives/minhthetus-cli-windows-amd64.zip minhthetus-cli.exe)
+
+          # Windows arm64
+          mkdir -p dist/windows-arm64
+          GOOS=windows GOARCH=arm64 go build -ldflags="-s -w" -o dist/windows-arm64/minhthetus-cli.exe main.go
+          (cd dist/windows-arm64 && zip ../archives/minhthetus-cli-windows-arm64.zip minhthetus-cli.exe)
+
+          # Darwin (macOS) arm64
+          mkdir -p dist/darwin-arm64
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/darwin-arm64/minhthetus-cli main.go
+          tar -czvf dist/archives/minhthetus-cli-darwin-arm64.tar.gz -C dist/darwin-arm64 minhthetus-cli
+
+          # Darwin (macOS) amd64
+          mkdir -p dist/darwin-amd64
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/darwin-amd64/minhthetus-cli main.go
+          tar -czvf dist/archives/minhthetus-cli-darwin-amd64.tar.gz -C dist/darwin-amd64 minhthetus-cli
+
+          # Linux amd64
+          mkdir -p dist/linux-amd64
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/linux-amd64/minhthetus-cli main.go
+          tar -czvf dist/archives/minhthetus-cli-linux-amd64.tar.gz -C dist/linux-amd64 minhthetus-cli
+
+          # Generate SHA256 checksums
+          cd dist/archives
+          sha256sum * > checksums.txt
+          cd ../..
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.WIKI_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.event.inputs.tag_name || github.ref_name }}"
+
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG already exists. Uploading assets..."
+            gh release upload "$TAG" dist/archives/* --clobber
+          else
+            echo "Creating new release for $TAG..."
+            gh release create "$TAG" dist/archives/* --title "$TAG" --generate-notes
+          fi

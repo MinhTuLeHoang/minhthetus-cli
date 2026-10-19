@@ -1,0 +1,22 @@
+name: Bump WinGet Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name to publish to WinGet (e.g. v1.9.1)'
+        required: false
+        default: ''
+
+jobs:
+  publish-winget:
+    runs-on: windows-latest
+    steps:
+      - name: Publish to WinGet
+        uses: vedantmgoyal2009/winget-releaser@v2
+        with:
+          identifier: MinhTuLeHoang.minhthetus-cli
+          version: ${{ github.event.inputs.tag_name || github.event.release.tag_name }}
+          token: ${{ secrets.WINGET_TOKEN || secrets.GITHUB_TOKEN }}

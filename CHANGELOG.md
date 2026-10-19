@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-10-19
+
+### Added
+- Windows Package Manager (WinGet) support and automated binary distribution
+- Cross-platform GitHub Release workflow producing Windows portable zip
+- Native WinGet detection in CLI update and uninstall commands
+- Developer guide for WinGet package distribution (guide/GUIDE_WINGET.md)
+
+### Fixed
+- Git tag version sorting in get_version script
+
 ## [1.10.0] - 2026-09-16
 
 ### Added

@@ -122,7 +122,7 @@ func isUpToDate(current, latest string) bool {
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update the CLI to the latest version",
-	Long:  `Detects the installation method (Homebrew, Go, or Manual) and updates the minhthetus-cli binary to the latest version while safely preserving all local configurations.`,
+	Long:  `Detects the installation method (Homebrew, WinGet, Go, or Manual) and updates the minhthetus-cli binary to the latest version while safely preserving all local configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(ui.InfoMessage("All local configurations in ~/.minhthetus-cli/ will be fully preserved."))
 		fmt.Printf("%s Checking current installation method...\n", ui.HourglassIcon)
@@ -191,6 +191,26 @@ var updateCmd = &cobra.Command{
 				return
 			}
 			fmt.Printf("%s %s\n", ui.SuccessMessage(""), ui.GreenStyle().Render("Successfully updated minhthetus-cli via Homebrew!"))
+
+		case WinGet:
+			confirmMsg := "Would you like to run 'winget upgrade MinhTuLeHoang.minhthetus-cli' to update?"
+			confirmed, err := ui.Confirm(confirmMsg, 0, true)
+			if err != nil || !confirmed {
+				fmt.Printf("%s %s\n", ui.ErrorMessage(""), "Update cancelled.")
+				return
+			}
+
+			fmt.Printf("%s Running 'winget upgrade MinhTuLeHoang.minhthetus-cli'...\n", ui.HourglassIcon)
+			wingetCmd := exec.Command("winget", "upgrade", "MinhTuLeHoang.minhthetus-cli")
+			wingetCmd.Stdout = os.Stdout
+			wingetCmd.Stderr = os.Stderr
+			wingetCmd.Stdin = os.Stdin
+			if err := wingetCmd.Run(); err != nil {
+				fmt.Printf("%s %s\n", ui.ErrorMessage(""), ui.RedStyle().Render(fmt.Sprintf("WinGet update failed: %v", err)))
+				fmt.Printf("%s Please run the command manually: %s\n", ui.InfoMessage(""), ui.CyanStyle().Render("winget upgrade MinhTuLeHoang.minhthetus-cli"))
+				return
+			}
+			fmt.Printf("%s %s\n", ui.SuccessMessage(""), ui.GreenStyle().Render("Successfully updated minhthetus-cli via WinGet!"))
 
 		case GoInstall:
 			confirmMsg := "Would you like to run 'go install' to update to the latest version?"
