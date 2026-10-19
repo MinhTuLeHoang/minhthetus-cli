@@ -177,13 +177,25 @@ const (
 		newChangelogEntries.WriteString("- Routine maintenance and version bump.\n\n")
 	}
 
-	unreleasedHeader := "## [Unreleased]\n\n"
 	changelogContentStr := string(existingChangelog)
-	index := strings.Index(changelogContentStr, unreleasedHeader)
-	if index == -1 {
-		index = 0
-	} else {
-		index += len(unreleasedHeader)
+	unreleasedMarker := "## [Unreleased]"
+	unreleasedIdx := strings.Index(changelogContentStr, unreleasedMarker)
+	index := 0
+	if unreleasedIdx != -1 {
+		rest := changelogContentStr[unreleasedIdx+len(unreleasedMarker):]
+		skipped := 0
+		for i, ch := range rest {
+			if ch == '\n' {
+				skipped++
+				if skipped == 2 {
+					index = unreleasedIdx + len(unreleasedMarker) + i + 1
+					break
+				}
+			}
+		}
+		if index == 0 {
+			index = unreleasedIdx + len(unreleasedMarker)
+		}
 	}
 
 	updatedChangelog := changelogContentStr[:index] + newChangelogEntries.String() + changelogContentStr[index:]
