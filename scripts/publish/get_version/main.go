@@ -18,8 +18,8 @@ func main() {
 	// Fetch latest updates and tags from origin
 	_, _ = runCmd("git", "fetch", "origin")
 
-	// Query git tags
-	tagsOut, err := runCmd("git", "tag", "-l", "v*")
+	// Query git tags sorted by version
+	tagsOut, err := runCmd("git", "tag", "-l", "v*", "--sort=version:refname")
 	if err != nil {
 		fmt.Printf("❌ Error listing git tags: %v\n", err)
 		os.Exit(1)

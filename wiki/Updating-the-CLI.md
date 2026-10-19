@@ -100,7 +100,8 @@ sudo make install
 ## Version History
 
 * **First Stable Version Supported**: `v1.3.0`
-* **Latest Stable Version Update**: `v1.3.2`
+* **Latest Stable Version Update**: `v1.11.0`
 
+- **v1.11.0**: Added Windows Package Manager (WinGet) upgrade and uninstallation detection to the native CLI.
 - **v1.3.2**: Added pre-update version checking logic to verify if an update is actually needed before performing the update.
 - **v1.3.0**: Introduced the built-in `update` command and native update automation workflows.
