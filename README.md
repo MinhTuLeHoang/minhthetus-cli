@@ -21,12 +21,13 @@ To get started or contribute, please refer to the following documentation:
 - [**Migrating to the Go CLI**](guide/MIGRATION_GO.md) - **Required reading for existing users** of the legacy Node.js version.
 - [First-Time Local Setup (Go)](guide/GUIDE_START_LOCAL.go.md) / [(Legacy Node)](guide/GUIDE_START_LOCAL.node.md) - Onboarding instructions to get the CLI running on your machine.
 - [Adding New CLI Features](guide/GUIDE_NEW_CLI.md) - Best practices for creating new commands.
+- [WinGet Package Distribution](guide/GUIDE_WINGET.md) - Windows Package Manager setup and CI/CD workflow.
 
 ---
 
 ## ⚡ Quick Start
 
-### Option 1: Install via Homebrew (Recommended)
+### Option 1: Install via Homebrew (macOS / Linux)
 ```bash
 # Trust the tap (Required for Homebrew 6.0.0+)
 brew trust minhtulehoang/tap
@@ -35,7 +36,13 @@ brew trust minhtulehoang/tap
 brew install MinhTuLeHoang/tap/minhthetus-cli
 ```
 
-### Option 2: Install via Go (Compiling directly)
+### Option 2: Install via WinGet (Windows)
+```powershell
+# Install directly using Windows Package Manager
+winget install MinhTuLeHoang.minhthetus-cli
+```
+
+### Option 3: Install via Go (Compiling directly)
 
 > [!IMPORTANT]
 > **Pre-requisite:** Ensure Go's binary directory (`~/go/bin`) is in your shell's `PATH`. If you haven't set this up, run:
@@ -51,7 +58,7 @@ go install github.com/MinhTuLeHoang/minhthetus-cli@latest
 minhthetus-cli setup-completion
 ```
 
-### Option 3: Manual Installation (From Source clone)
+### Option 4: Manual Installation (From Source clone)
 ```bash
 # Clone the repository
 git clone https://github.com/MinhTuLeHoang/minhthetus-cli.git

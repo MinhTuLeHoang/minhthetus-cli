@@ -17,15 +17,20 @@ type InstallMethod string
 const (
 	Homebrew    InstallMethod = "Homebrew"
 	GoInstall   InstallMethod = "Go"
+	WinGet      InstallMethod = "WinGet"
 	ManualBuild InstallMethod = "Manual/Makefile"
 )
 
 // detectInstallMethod inspects the executable path to determine the installation type
 func detectInstallMethod(path string) InstallMethod {
-	if strings.Contains(path, "Cellar") || strings.Contains(path, "homebrew") || strings.Contains(path, "opt/homebrew") {
+	lowerPath := strings.ToLower(path)
+	if strings.Contains(path, "Cellar") || strings.Contains(lowerPath, "homebrew") || strings.Contains(lowerPath, "opt/homebrew") {
 		return Homebrew
 	}
-	if strings.Contains(path, "go/bin") {
+	if strings.Contains(lowerPath, "winget") {
+		return WinGet
+	}
+	if strings.Contains(lowerPath, "go/bin") || strings.Contains(lowerPath, "go\\bin") {
 		return GoInstall
 	}
 	return ManualBuild
@@ -38,6 +43,15 @@ func runBrewUninstall() error {
 	brewCmd.Stderr = os.Stderr
 	brewCmd.Stdin = os.Stdin
 	return brewCmd.Run()
+}
+
+// runWingetUninstall triggers WinGet's uninstallation database command
+func runWingetUninstall() error {
+	wingetCmd := exec.Command("winget", "uninstall", "MinhTuLeHoang.minhthetus-cli")
+	wingetCmd.Stdout = os.Stdout
+	wingetCmd.Stderr = os.Stderr
+	wingetCmd.Stdin = os.Stdin
+	return wingetCmd.Run()
 }
 
 // cleanupShellConfig automatically removes all autocomplete integration lines from zshrc and bashrc
@@ -122,6 +136,14 @@ var uninstallCmd = &cobra.Command{
 			if err := runBrewUninstall(); err != nil {
 				fmt.Printf("❌ Homebrew uninstallation failed: %v\n", err)
 				fmt.Println("👉 Please run the command manually: brew uninstall minhthetus-cli")
+				return
+			}
+
+		case WinGet:
+			fmt.Println("⏳ Triggering 'winget uninstall'...")
+			if err := runWingetUninstall(); err != nil {
+				fmt.Printf("❌ WinGet uninstallation failed: %v\n", err)
+				fmt.Println("👉 Please run the command manually: winget uninstall MinhTuLeHoang.minhthetus-cli")
 				return
 			}
 
