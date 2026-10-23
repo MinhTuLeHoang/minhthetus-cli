@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.1] - 2026-10-23
+
+### Fixed
+- Fix max base version identification in git tag-dev-stg by using semantic version comparison instead of lexical comparison
+
 ## [1.11.0] - 2026-10-19
 
 ### Added
