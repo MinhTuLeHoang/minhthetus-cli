@@ -201,8 +201,7 @@ func maxVersion(v1, v2 string) string {
 	if v2 == "" {
 		return v1
 	}
-	// Simple comparison
-	if v1 >= v2 {
+	if compareVersions(v1, v2) >= 0 {
 		return v1
 	}
 	return v2
