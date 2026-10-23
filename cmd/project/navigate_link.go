@@ -93,7 +93,9 @@ func runNavigateLink() {
 
 		switch action {
 		case "navigate":
-			handleSearch(groups)
+			if handleSearch(groups) {
+				return
+			}
 		case "add new":
 			handleAdd(groups, lines)
 		case "delete":
@@ -144,10 +146,10 @@ func parseLinkFile(filename string) ([]*LinkGroup, []string, error) {
 	return groups, lines, nil
 }
 
-func handleSearch(groups []*LinkGroup) {
+func handleSearch(groups []*LinkGroup) bool {
 	if len(groups) == 0 {
 		fmt.Println(ui.WarningMessage("No groups found in the file."))
-		return
+		return false
 	}
 
 	var groupNames []string
@@ -157,7 +159,7 @@ func handleSearch(groups []*LinkGroup) {
 
 	groupName, err := ui.Choose("Select a group:", groupNames)
 	if err != nil || groupName == "" {
-		return
+		return false
 	}
 
 	var selectedGroup *LinkGroup
@@ -170,12 +172,12 @@ func handleSearch(groups []*LinkGroup) {
 
 	if selectedGroup == nil || len(selectedGroup.Items) == 0 {
 		fmt.Println(ui.WarningMessage("No items in this group."))
-		return
+		return false
 	}
 
 	if len(selectedGroup.Items) == 1 {
 		openURL(selectedGroup.Items[0].URL)
-		return
+		return true
 	}
 
 	// Auto-select default if there's one? Requirement says "select item -> navigate", let's list them.
@@ -194,7 +196,7 @@ func handleSearch(groups []*LinkGroup) {
 	// Currently UI doesn't have ChooseWithDefault exposed if we just use Choose, wait, I can use ui.ChooseWithDefault
 	itemName, err := ui.ChooseWithDefault("Select a link:", itemNames, defaultIndex)
 	if err != nil || itemName == "" {
-		return
+		return false
 	}
 
 	for _, item := range selectedGroup.Items {
@@ -204,9 +206,10 @@ func handleSearch(groups []*LinkGroup) {
 		}
 		if name == itemName {
 			openURL(item.URL)
-			return
+			return true
 		}
 	}
+	return false
 }
 
 func openURL(url string) {
