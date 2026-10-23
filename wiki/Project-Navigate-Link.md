@@ -36,4 +36,7 @@ Version: 1
 ## Version History
 
 * **First Stable Version Supported**: `v1.10.0`
-* **Latest Stable Version Update**: `v1.10.0`
+* **Latest Stable Version Update**: `v1.11.2`
+
+- **v1.11.2**: Fixed `project navigate-link` so the command terminates immediately upon successful navigation instead of looping back to the action menu.
+
