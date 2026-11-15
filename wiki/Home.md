@@ -46,4 +46,5 @@ Use the sidebar on the right or the links below to explore specific features:
 To learn how to install, update, and configure the CLI on your machine:
 *   For installation instructions, see the repository [README](https://github.com/MinhTuLeHoang/minhthetus-cli#readme).
 *   For instructions on updating an existing installation, see [[Updating-the-CLI]].
+*   For version and installation disk footprint, see [[Version]].
 *   For shell completions, execute `minhthetus-cli setup-completion`.
