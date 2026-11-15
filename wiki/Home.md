@@ -1,6 +1,6 @@
 # Welcome to the minhthetus-cli Wiki!
 
-![Version](https://img.shields.io/badge/version-v1.11.2-green) ![Language](https://img.shields.io/badge/language-Go-00ADD8.svg?style=flat&logo=go) ![License](https://img.shields.io/badge/license-MIT-blue)
+![Version](https://img.shields.io/badge/version-v1.11.3-green) ![Language](https://img.shields.io/badge/language-Go-00ADD8.svg?style=flat&logo=go) ![License](https://img.shields.io/badge/license-MIT-blue)
 
 A professional, high-performance CLI tool designed for automation and developer productivity, written natively in Go.
 
@@ -46,4 +46,5 @@ Use the sidebar on the right or the links below to explore specific features:
 To learn how to install, update, and configure the CLI on your machine:
 *   For installation instructions, see the repository [README](https://github.com/MinhTuLeHoang/minhthetus-cli#readme).
 *   For instructions on updating an existing installation, see [[Updating-the-CLI]].
+*   For version and installation disk footprint, see [[Version]].
 *   For shell completions, execute `minhthetus-cli setup-completion`.

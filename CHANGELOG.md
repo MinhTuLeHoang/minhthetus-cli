@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.3] - 2026-11-15
+
+### Added
+- Add version subcommand to display CLI version and installation disk usage
+- Log total CLI size breakdown including binary and config directory
+
 ## [1.11.2] - 2026-10-23
 
 ### Fixed
