@@ -37,5 +37,5 @@ minhthetus-cli -v
 
 ## Version History
 
-* **First Stable Version Supported**: `v1.12.0`
-* **Latest Stable Version Update**: `v1.12.0`
+* **First Stable Version Supported**: `v1.11.3`
+* **Latest Stable Version Update**: `v1.11.3`
