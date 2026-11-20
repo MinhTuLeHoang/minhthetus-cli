@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.4] - 2026-11-20
+
+### Added
+- Added Windows support for sys host command
+- Added interactive scrollable viewer for host search results
+
+### Changed
+- Replaced shell cat command with native Go file read for cross-platform output
+
 ## [1.11.3] - 2026-11-15
 
 ### Added
