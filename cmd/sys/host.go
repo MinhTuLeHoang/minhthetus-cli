@@ -384,7 +384,12 @@ func searchEntries(entries []HostEntry) error {
 // showAllEntries lists all hosts, sorted cleanly according to spec
 func showAllEntries(entries []HostEntry) error {
 	if len(entries) == 0 {
-		fmt.Println(ui.InfoMessage("No entries found in hosts file."))
+		hostsPath := getHostsFilePath()
+		fmt.Println(ui.InfoMessage(fmt.Sprintf("No active host mappings found in %s.", hostsPath)))
+		if runtime.GOOS == "windows" {
+			fmt.Println(ui.GrayStyle().Render("  (By default on Windows, localhost entries are commented out with '#')"))
+		}
+		fmt.Println(ui.GrayStyle().Render("  Use 'Add Host' to add your first domain-IP mapping."))
 		return nil
 	}
 
