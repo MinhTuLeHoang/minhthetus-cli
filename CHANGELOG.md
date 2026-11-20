@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-11-20
+
+### Added
+- Added --shell (-s) flag and zero-subprocess Windows shell detection (PowerShell 5.1, PowerShell 7+, Git Bash) to setup-completion
+- Added OneDrive-aware PowerShell profile resolution, Fish completion setup, and Git Bash .bash_profile bridge
+
+### Changed
+- Upgraded uninstall with block-aware completion cleanup across PowerShell, Git Bash, Bash, Zsh, and Fish, plus Windows delayed self-delete
+
 ## [1.11.4] - 2026-11-20
 
 ### Added
