@@ -27,6 +27,7 @@
 * [[Sys-Size]]
 * [[Sys-Clean-My-Mac]]
 * [[Sys-Host]]
+* [[Sys-Setup-Finger-Print]]
 
 ### 🗂 Project Subcommands
 * [[Project-Navigate-Link]]
