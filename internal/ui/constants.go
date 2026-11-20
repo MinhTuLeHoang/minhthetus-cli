@@ -31,6 +31,8 @@ var (
 	HammerIcon    = "🔨"
 	HourglassIcon = "⏳"
 	SwitchIcon    = "🔄"
+	CleanIcon     = "🧹"
+	PointerIcon   = "👉"
 )
 
 // SuccessMessage returns a formatted success message
@@ -51,6 +53,11 @@ func InfoMessage(msg string) string {
 // WarningMessage returns a formatted warning message
 func WarningMessage(msg string) string {
 	return lipgloss.NewStyle().Foreground(Yellow).Render(WarningIcon + " " + msg)
+}
+
+// HintMessage returns a formatted next-step hint message
+func HintMessage(msg string) string {
+	return lipgloss.NewStyle().Foreground(Cyan).Render(PointerIcon + " " + msg)
 }
 
 // Style helpers
