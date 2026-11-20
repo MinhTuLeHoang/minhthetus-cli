@@ -29,11 +29,25 @@ and supports various modules like git, sys, web, and more.`,
 // Hook for conditionally registering the developer debug command package
 var registerDebug func() = nil
 
+// shouldAutoSetupCompletion skips background completion setup for commands that
+// manage completion, uninstall the binary, or serve shell tab-completion queries.
+func shouldAutoSetupCompletion(args []string) bool {
+	if len(args) > 1 {
+		switch args[1] {
+		case "setup-completion", "uninstall", "__complete", "__completeNoDesc":
+			return false
+		}
+	}
+	return true
+}
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	// Auto-setup completion (silent)
-	SetupCompletion(true)
+	if shouldAutoSetupCompletion(os.Args) {
+		SetupCompletion(true)
+	}
 
 	// Register commands from sub-packages
 	rootCmd.AddCommand(git.Cmd)

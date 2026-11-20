@@ -1,5 +1,7 @@
 ### 📖 General
 * [[Home]]
+* [[Setup-Completion]]
+* [[Uninstall]]
 * [[Updating-the-CLI]]
 * [[Version]]
 

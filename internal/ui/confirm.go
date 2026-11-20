@@ -121,12 +121,22 @@ func (m confirmModel) View() string {
 
 // Confirm asks the user for confirmation with optional timeout and auto-approve.
 func Confirm(prompt string, timeout time.Duration, autoApprove bool) (bool, error) {
+	return ConfirmWithDefault(prompt, timeout, autoApprove, true)
+}
+
+// ConfirmWithDefault asks the user for confirmation with an explicit default cursor selection.
+func ConfirmWithDefault(prompt string, timeout time.Duration, autoApprove bool, defaultYes bool) (bool, error) {
+	cursor := 0
+	if !defaultYes {
+		cursor = 1
+	}
+
 	m := confirmModel{
 		prompt:      prompt,
 		timeout:     timeout,
 		startTime:   time.Now(),
 		autoApprove: autoApprove,
-		cursor:      0, // default focus on Yes
+		cursor:      cursor,
 	}
 
 	p := tea.NewProgram(m)
