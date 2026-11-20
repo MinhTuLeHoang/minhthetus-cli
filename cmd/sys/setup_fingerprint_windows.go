@@ -67,50 +67,84 @@ func (b *windowsBackend) PlanEnable() (ActionPlan, error) {
 		Warnings:          wPlan.Warnings,
 		RequiresElevation: needsUAC && !snap.IsAdmin,
 		Apply: func() error {
-			saved := WindowsSavedState{}
-			if prev, _ := LoadWindowsStateBackup(backupDir); prev != nil {
-				saved = *prev
-			}
-			for _, step := range wPlan.Steps {
-				switch step.Key {
-				case "enable_wbiosrvc":
-					saved.ModifiedWbioSrvc = true
-					saved.PrevWbioSrvcStartType = snap.WbioSrvcStartType
-					if err := b.runElevatedCmd(snap.IsAdmin, "sc.exe config WbioSrvc start= demand && sc.exe start WbioSrvc"); err != nil {
-						return fmt.Errorf("failed to configure/start WbioSrvc: %w", err)
-					}
-				case "start_wbiosrvc":
-					saved.ModifiedWbioSrvc = true
-					saved.PrevWbioSrvcStartType = snap.WbioSrvcStartType
-					if err := b.runElevatedCmd(snap.IsAdmin, "sc.exe start WbioSrvc"); err != nil {
-						return fmt.Errorf("failed to start WbioSrvc: %w", err)
-					}
-				case "enable_native_sudo":
-					saved.ModifiedNativeSudo = true
-					saved.PrevNativeSudoMode = snap.NativeSudoMode
-					if err := b.runElevatedCmd(snap.IsAdmin, "sudo config --enable normal"); err != nil {
-						return fmt.Errorf("failed to enable native sudo inline mode: %w", err)
-					}
-				case "set_uac_cred_prompt":
-					saved.ModifiedUACToggle = true
-					if snap.HasConsentPromptBehavior {
-						saved.PrevConsentPromptAdmin = snap.ConsentPromptBehaviorAdmin
-					} else {
-						saved.PrevConsentPromptAdmin = 5
-					}
-					if err := b.runElevatedCmd(snap.IsAdmin, `reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v ConsentPromptBehaviorAdmin /t REG_DWORD /d 1 /f`); err != nil {
-						return fmt.Errorf("failed to update ConsentPromptBehaviorAdmin: %w", err)
-					}
-				case "open_signin_settings":
-					_ = b.runner.RunInteractive("cmd", "/c", "start", WindowsSignInSettingsURI)
-				}
-			}
-			if homeErr == nil {
-				_, _ = SaveWindowsStateBackup(backupDir, saved)
-			}
-			return nil
+			return b.applyWindowsEnablePlan(wPlan, snap, backupDir, homeErr == nil)
 		},
 	}, nil
+}
+
+func (b *windowsBackend) applyWindowsEnablePlan(wPlan WindowsConfigPlan, snap WindowsProbeSnapshot, backupDir string, canPersist bool) error {
+	saved := WindowsSavedState{}
+	if canPersist && backupDir != "" {
+		if prev, _ := LoadWindowsStateBackup(backupDir); prev != nil {
+			saved = *prev
+		}
+	}
+	persistBackup := func(stepKey string) error {
+		if !canPersist || backupDir == "" {
+			return nil
+		}
+		if _, err := SaveWindowsStateBackup(backupDir, saved); err != nil {
+			return fmt.Errorf("step %s succeeded, but failed to persist rollback state: %w", stepKey, err)
+		}
+		return nil
+	}
+	for _, step := range wPlan.Steps {
+		switch step.Key {
+		case "enable_wbiosrvc":
+			if err := b.runElevatedCmd(snap.IsAdmin, "sc.exe config WbioSrvc start= demand && sc.exe start WbioSrvc"); err != nil {
+				return fmt.Errorf("failed to configure/start WbioSrvc: %w", err)
+			}
+			if !saved.ModifiedWbioSrvc {
+				saved.ModifiedWbioSrvc = true
+				saved.PrevWbioSrvcStartType = snap.WbioSrvcStartType
+			}
+			if err := persistBackup(step.Key); err != nil {
+				return err
+			}
+		case "start_wbiosrvc":
+			if err := b.runElevatedCmd(snap.IsAdmin, "sc.exe start WbioSrvc"); err != nil {
+				return fmt.Errorf("failed to start WbioSrvc: %w", err)
+			}
+			if !saved.ModifiedWbioSrvc {
+				saved.ModifiedWbioSrvc = true
+				saved.PrevWbioSrvcStartType = snap.WbioSrvcStartType
+			}
+			if err := persistBackup(step.Key); err != nil {
+				return err
+			}
+		case "enable_native_sudo":
+			if err := b.runElevatedCmd(snap.IsAdmin, "sudo config --enable normal"); err != nil {
+				return fmt.Errorf("failed to enable native sudo inline mode: %w", err)
+			}
+			if !saved.ModifiedNativeSudo {
+				saved.ModifiedNativeSudo = true
+				saved.PrevNativeSudoMode = snap.NativeSudoMode
+			}
+			if err := persistBackup(step.Key); err != nil {
+				return err
+			}
+		case "set_uac_cred_prompt":
+			if err := b.runElevatedCmd(snap.IsAdmin, `reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v ConsentPromptBehaviorAdmin /t REG_DWORD /d 1 /f`); err != nil {
+				return fmt.Errorf("failed to update ConsentPromptBehaviorAdmin: %w", err)
+			}
+			if !saved.ModifiedUACToggle {
+				saved.ModifiedUACToggle = true
+				if snap.HasConsentPromptBehavior {
+					saved.PrevConsentPromptAdmin = snap.ConsentPromptBehaviorAdmin
+				} else {
+					saved.PrevConsentPromptAdmin = 5
+				}
+			}
+			if err := persistBackup(step.Key); err != nil {
+				return err
+			}
+		case "open_signin_settings":
+			if err := b.runner.RunInteractive("cmd", "/c", "start", WindowsSignInSettingsURI); err != nil {
+				return fmt.Errorf("failed to open Windows Sign-in options (%s): %w", WindowsSignInSettingsURI, err)
+			}
+		}
+	}
+	return nil
 }
 
 func (b *windowsBackend) PlanDisable() (ActionPlan, error) {
@@ -149,17 +183,34 @@ func (b *windowsBackend) PlanDisable() (ActionPlan, error) {
 		Commands:          cmds,
 		RequiresElevation: needsUAC && !snap.IsAdmin,
 		Apply: func() error {
-			for _, step := range wPlan.Steps {
-				if err := b.runElevatedCmd(snap.IsAdmin, step.Command); err != nil {
-					return fmt.Errorf("failed to apply revert step (%s): %w", step.Key, err)
-				}
-			}
-			if homeErr == nil && saved != nil {
-				_ = SaveWindowsStateBackupReset(backupDir)
-			}
-			return nil
+			return b.applyWindowsDisablePlan(wPlan, snap, saved, backupDir, homeErr == nil)
 		},
 	}, nil
+}
+
+func (b *windowsBackend) applyWindowsDisablePlan(wPlan WindowsConfigPlan, snap WindowsProbeSnapshot, saved *WindowsSavedState, backupDir string, canPersist bool) error {
+	for _, step := range wPlan.Steps {
+		if err := b.runElevatedCmd(snap.IsAdmin, step.Command); err != nil {
+			return fmt.Errorf("failed to apply revert step (%s): %w", step.Key, err)
+		}
+		if canPersist && backupDir != "" && saved != nil {
+			switch step.Key {
+			case "restore_uac_prompt":
+				saved.ModifiedUACToggle = false
+			case "restore_native_sudo":
+				saved.ModifiedNativeSudo = false
+			}
+			if _, err := SaveWindowsStateBackup(backupDir, *saved); err != nil {
+				return fmt.Errorf("revert step %s succeeded, but failed to update backup state: %w", step.Key, err)
+			}
+		}
+	}
+	if canPersist && backupDir != "" && saved != nil {
+		if err := SaveWindowsStateBackupReset(backupDir); err != nil {
+			return fmt.Errorf("reverted system settings, but failed to clear backup state: %w", err)
+		}
+	}
+	return nil
 }
 
 func (b *windowsBackend) Verify() error {
@@ -188,11 +239,7 @@ func (b *windowsBackend) runElevatedCmd(isAdmin bool, cmdLine string) error {
 	if isAdmin {
 		return b.runner.RunInteractive("cmd", "/c", cmdLine)
 	}
-	escaped := strings.ReplaceAll(cmdLine, "'", "''")
-	psArgs := fmt.Sprintf(
-		`$p = Start-Process cmd -ArgumentList @('/c', '%s') -Verb RunAs -Wait -PassThru; exit $p.ExitCode`,
-		escaped,
-	)
+	psArgs := BuildWindowsElevationPSCommand(cmdLine)
 	return b.runner.RunInteractive("powershell", "-NoProfile", "-NonInteractive", "-Command", psArgs)
 }
 
@@ -285,6 +332,14 @@ func (b *windowsBackend) collectSnapshot() WindowsProbeSnapshot {
 	qOut, _ := b.runner.CombinedOutput("sc.exe", "query", "WbioSrvc")
 	qcOut, _ := b.runner.CombinedOutput("sc.exe", "qc", "WbioSrvc")
 	snap.WbioSrvcState, snap.WbioSrvcStartType = ParseSCServiceOutput(string(qOut), string(qcOut))
+	if k, err := registry.OpenKey(registry.LOCAL_MACHINE, `SYSTEM\CurrentControlSet\Services\WbioSrvc`, registry.QUERY_VALUE); err == nil {
+		if v, _, err := k.GetIntegerValue("Start"); err == nil {
+			if regStart := ParseWindowsServiceStartDWORD(uint32(v)); regStart != "Unknown" {
+				snap.WbioSrvcStartType = regStart
+			}
+		}
+		k.Close()
+	}
 
 	if pnpOut, err := b.runner.CombinedOutput("pnputil.exe", "/enum-devices", "/class", "Biometric"); err == nil {
 		snap.PnPBiometricDevices = ParsePnPBiometricOutput(string(pnpOut))

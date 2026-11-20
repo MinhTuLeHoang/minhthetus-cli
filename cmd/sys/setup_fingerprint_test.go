@@ -566,6 +566,244 @@ func TestWindowsOutputParsers(t *testing.T) {
 	}
 }
 
+// --- 6. Iteration 2 Regression Tests ---
+
+func TestBuildWindowsElevationPSCommand(t *testing.T) {
+	ps := BuildWindowsElevationPSCommand(`reg add "HKLM\SOFTWARE\Test" /v 'Key' /f`)
+	requiredSnippets := []string{
+		"$ErrorActionPreference = 'Stop'",
+		"try {",
+		"Start-Process cmd -ArgumentList @('/c',",
+		"-Verb RunAs -Wait -PassThru",
+		"if (-not $p) { exit 1 }; exit $p.ExitCode",
+		"} catch {",
+		"exit 1 }",
+		"''Key''",
+	}
+	for _, want := range requiredSnippets {
+		if !strings.Contains(ps, want) {
+			t.Fatalf("elevation PS command missing %q:\n%s", want, ps)
+		}
+	}
+}
+
+func TestWindowsNoHardwareGuards(t *testing.T) {
+	// Windows 11 24H2 with stopped/disabled WbioSrvc and disabled native sudo, but NO fingerprint hardware
+	snapNoHW := WindowsProbeSnapshot{
+		CurrentBuild:               26100,
+		DisplayVersion:             "24H2",
+		WbioSrvcState:              "Stopped",
+		WbioSrvcStartType:          "Disabled",
+		HasNativeSudoExe:           true,
+		NativeSudoMode:             "disabled",
+		EnableLUA:                  1,
+		HasEnableLUA:               true,
+		ConsentPromptBehaviorAdmin: 5,
+		HasConsentPromptBehavior:   true,
+	}
+	plan := PlanWindowsEnableActions(snapNoHW)
+	if !plan.AlreadySatisfied || len(plan.Steps) != 0 {
+		t.Fatalf("expected 0 UAC steps when !hwDetected, got AlreadySatisfied=%v steps=%+v", plan.AlreadySatisfied, plan.Steps)
+	}
+
+	// If a PnP biometric device IS detected while WbioSrvc is Stopped, starting WbioSrvc is allowed
+	snapPnP := snapNoHW
+	snapPnP.PnPBiometricDevices = []string{"Synaptics WBDI"}
+	planPnP := PlanWindowsEnableActions(snapPnP)
+	if planPnP.AlreadySatisfied || len(planPnP.Steps) == 0 {
+		t.Fatalf("expected remediation steps when PnP biometric device is present")
+	}
+	foundWbio := false
+	for _, s := range planPnP.Steps {
+		if s.Key == "enable_wbiosrvc" {
+			foundWbio = true
+		}
+	}
+	if !foundWbio {
+		t.Fatalf("expected enable_wbiosrvc when PnP biometric device is present and WbioSrvc is Disabled")
+	}
+}
+
+func TestWindowsDisableUnknownSudoRevertAndParseSudoConfigState(t *testing.T) {
+	// 1. ParseSudoConfigState must NOT false-positive on CLI usage/help text
+	helpOut := "Usage: sudo config [--enable <disabled|forceNewWindow|disableInput|normal>]\n"
+	if got := ParseSudoConfigState(0, false, helpOut); got != "unknown" {
+		t.Fatalf("usage text false-positived as %q; expected \"unknown\"", got)
+	}
+	multiModeHelp := "Options:\n  disabled\n  forceNewWindow\n  disableInput\n  normal\n"
+	if got := ParseSudoConfigState(0, false, multiModeHelp); got != "unknown" {
+		t.Fatalf("multi-mode help text false-positived as %q; expected \"unknown\"", got)
+	}
+	for tc, want := range map[string]string{
+		"Current configuration: normal":         "normal",
+		"Sudo configuration: disableInput":      "disableInput",
+		"Sudo configuration: forceNewWindow":    "forceNewWindow",
+		"Sudo is disabled":                      "disabled",
+	} {
+		if got := ParseSudoConfigState(0, false, tc); got != want {
+			t.Fatalf("ParseSudoConfigState(%q) = %q, want %q", tc, got, want)
+		}
+	}
+
+	// 2. PlanWindowsDisableActions must NEVER emit `sudo config --enable unknown`
+	snap := WindowsProbeSnapshot{
+		CurrentBuild:     26100,
+		HasNativeSudoExe: true,
+		NativeSudoMode:   "normal",
+	}
+	for _, tc := range []struct {
+		prev    string
+		wantCmd string
+	}{
+		{prev: "unknown", wantCmd: "sudo config --disable"},
+		{prev: "disabled", wantCmd: "sudo config --disable"},
+		{prev: "forceNewWindow", wantCmd: "sudo config --enable forceNewWindow"},
+		{prev: "disableInput", wantCmd: "sudo config --enable disableInput"},
+	} {
+		dis := PlanWindowsDisableActions(snap, &WindowsSavedState{
+			ModifiedNativeSudo: true,
+			PrevNativeSudoMode: tc.prev,
+		})
+		if len(dis.Steps) != 1 || dis.Steps[0].Command != tc.wantCmd {
+			t.Fatalf("prev=%q: expected command %q, got %+v", tc.prev, tc.wantCmd, dis.Steps)
+		}
+		if strings.Contains(dis.Steps[0].Command, "unknown") {
+			t.Fatalf("forbidden 'unknown' in revert command: %s", dis.Steps[0].Command)
+		}
+	}
+}
+
+func TestWindowsEnableLUAZeroAndLocalizedSCOutput(t *testing.T) {
+	snap := WindowsProbeSnapshot{
+		CurrentBuild:               22631,
+		WinBioFingerprintUnits:     []WinBioUnitInfo{{UnitID: 1, BiometricFactor: WinBioTypeFingerprint, Description: "Goodix"}},
+		AccountEnrolledFactors:     WinBioTypeFingerprint,
+		WbioSrvcState:              "Running",
+		WbioSrvcStartType:          "Manual",
+		EnableLUA:                  0,
+		HasEnableLUA:               true,
+		ConsentPromptBehaviorAdmin: 1,
+		HasConsentPromptBehavior:   true,
+	}
+	st := BuildWindowsStatus(snap)
+	if st.Enabled {
+		t.Fatalf("expected Enabled=false when EnableLUA=0")
+	}
+	hasLUAWarn := false
+	for _, w := range st.Warnings {
+		if strings.Contains(w, "EnableLUA=0") {
+			hasLUAWarn = true
+		}
+	}
+	if !hasLUAWarn {
+		t.Fatalf("expected EnableLUA=0 warning, got %v", st.Warnings)
+	}
+
+	// Localized German/Spanish sc.exe outputs (even with localized state names, relying on numeric codes)
+	deQuery := "SERVICE_NAME: WbioSrvc\n        TYP                : 20  WIN32_SHARE_PROCESS\n        ZUSTAND            : 4  WIRD_AUSGEFUEHRT\n"
+	deQC := "SERVICE_NAME: WbioSrvc\n        TYP                : 20  WIN32_SHARE_PROCESS\n        STARTART           : 3   MANUELL\n        FEHLERSTEUERUNG    : 1   NORMAL\n"
+	state, start := ParseSCServiceOutput(deQuery, deQC)
+	if state != "Running" || start != "Manual" {
+		t.Fatalf("expected localized Running/Manual, got state=%q start=%q", state, start)
+	}
+
+	stoppedQuery := "SERVICE_NAME: WbioSrvc\n        TYP                : 20  WIN32_SHARE_PROCESS\n        ESTADO             : 1  DETENIDO\n"
+	disabledQC := "SERVICE_NAME: WbioSrvc\n        TYP                : 20  WIN32_SHARE_PROCESS\n        TIPO_INICIO        : 4  DESHABILITADO\n        CONTROL_ERROR      : 1  NORMAL\n"
+	state2, start2 := ParseSCServiceOutput(stoppedQuery, disabledQC)
+	if state2 != "Stopped" || start2 != "Disabled" {
+		t.Fatalf("expected localized Stopped/Disabled, got state=%q start=%q", state2, start2)
+	}
+
+	if ParseWindowsServiceStartDWORD(2) != "Automatic" || ParseWindowsServiceStartDWORD(3) != "Manual" || ParseWindowsServiceStartDWORD(4) != "Disabled" {
+		t.Fatalf("unexpected ParseWindowsServiceStartDWORD mapping")
+	}
+}
+
+func TestPlanDarwinPAMEnableNoDuplicateReattachAndProseComments(t *testing.T) {
+	// 1. Sonoma sudo_local: existing pam_reattach.so + commented pam_tid.so + prose comment
+	currentLocal := "# Touch ID auth via pam_tid.so is cool\nauth       optional       /opt/homebrew/lib/pam/pam_reattach.so ignore_ssh\n#auth       sufficient     pam_tid.so\n"
+	res, err := PlanDarwinPAMEnable(DarwinPAMEnableInput{
+		TargetPath:      DarwinSudoLocalPath,
+		CurrentContent:  currentLocal,
+		PAMReattachPath: DarwinPAMReattachArm64,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if count := strings.Count(res.NewContent, "pam_reattach.so"); count != 1 {
+		t.Fatalf("expected strictly 1 pam_reattach.so, got %d:\n%s", count, res.NewContent)
+	}
+	if !strings.Contains(res.NewContent, "# Touch ID auth via pam_tid.so is cool") {
+		t.Fatalf("prose comment was clobbered:\n%s", res.NewContent)
+	}
+	if rIdx, tIdx := findActivePAMModuleLine(res.NewContent, DarwinPAMReattachModule), findActivePAMModuleLine(res.NewContent, DarwinPAMTidModule); rIdx < 0 || tIdx < 0 || rIdx >= tIdx {
+		t.Fatalf("expected pam_reattach.so (%d) before pam_tid.so (%d):\n%s", rIdx, tIdx, res.NewContent)
+	}
+
+	// 2. Pre-Sonoma /etc/pam.d/sudo: existing pam_reattach.so before pam_opendirectory.so
+	preSonoma := "auth       optional       /opt/homebrew/lib/pam/pam_reattach.so ignore_ssh\nauth       required       pam_opendirectory.so\n"
+	resPre, err := PlanDarwinPAMEnable(DarwinPAMEnableInput{
+		TargetPath:      DarwinSudoPath,
+		CurrentContent:  preSonoma,
+		PAMReattachPath: DarwinPAMReattachArm64,
+	})
+	if err != nil {
+		t.Fatalf("pre-Sonoma error: %v", err)
+	}
+	if count := strings.Count(resPre.NewContent, "pam_reattach.so"); count != 1 {
+		t.Fatalf("pre-Sonoma: expected strictly 1 pam_reattach.so, got %d:\n%s", count, resPre.NewContent)
+	}
+	rIdx := findActivePAMModuleLine(resPre.NewContent, DarwinPAMReattachModule)
+	tIdx := findActivePAMModuleLine(resPre.NewContent, DarwinPAMTidModule)
+	oIdx := findActivePAMModuleLine(resPre.NewContent, "pam_opendirectory.so")
+	if !(rIdx >= 0 && rIdx < tIdx && tIdx < oIdx) {
+		t.Fatalf("invalid pre-Sonoma ordering (reattach=%d tid=%d opendir=%d):\n%s", rIdx, tIdx, oIdx, resPre.NewContent)
+	}
+
+	// 3. Pre-Sonoma with existing pam_reattach.so when PAMReattachPath is empty
+	resPreNoReattachArg, err := PlanDarwinPAMEnable(DarwinPAMEnableInput{
+		TargetPath:     DarwinSudoPath,
+		CurrentContent: preSonoma,
+	})
+	if err != nil {
+		t.Fatalf("pre-Sonoma without PAMReattachPath error: %v", err)
+	}
+	rIdx2 := findActivePAMModuleLine(resPreNoReattachArg.NewContent, DarwinPAMReattachModule)
+	tIdx2 := findActivePAMModuleLine(resPreNoReattachArg.NewContent, DarwinPAMTidModule)
+	oIdx2 := findActivePAMModuleLine(resPreNoReattachArg.NewContent, "pam_opendirectory.so")
+	if !(rIdx2 >= 0 && rIdx2 < tIdx2 && tIdx2 < oIdx2) {
+		t.Fatalf("invalid pre-Sonoma ordering with pre-existing reattach (reattach=%d tid=%d opendir=%d):\n%s", rIdx2, tIdx2, oIdx2, resPreNoReattachArg.NewContent)
+	}
+}
+
+func TestLinuxTransitivePAMIncludesAndStrictFprintdParsing(t *testing.T) {
+	// 1. Transitive include: sudo -> system-auth -> fingerprint-auth (with pam_fprintd.so) and cycle guard
+	res, err := PlanLinuxSudoPAMEnable(LinuxPAMEnableInput{
+		SudoPath:    LinuxSudoPath,
+		SudoContent: "auth       include      system-auth\n",
+		IncludedContents: map[string]string{
+			"system-auth":      "auth       substack     fingerprint-auth\nauth       include      cycle-a\n",
+			"cycle-a":          "auth       include      system-auth\n",
+			"fingerprint-auth": "auth       sufficient   pam_fprintd.so\nauth       required     pam_unix.so\n",
+		},
+		PamFprintdPath: "/usr/lib64/security/pam_fprintd.so",
+	})
+	if err != nil || !res.AlreadyEnabled {
+		t.Fatalf("expected transitive include detection (AlreadyEnabled=true), got err=%v res=%+v", err, res)
+	}
+
+	// 2. Strict DetectFprintdEnrollment: bullet '-' outside 'fingerprints for user' must NOT count
+	errBullets := DetectFprintdEnrollment("Error listing devices:\n- DBus timeout\n- Retry later\n")
+	if errBullets.HasDevice || errBullets.EnrolledCount != 0 {
+		t.Fatalf("unexpected positive detection on error bullets: %+v", errBullets)
+	}
+
+	plainBullets := DetectFprintdEnrollment("Fingerprints for user bob on Elan:\n- right-index-finger\n")
+	if !plainBullets.HasDevice || plainBullets.EnrolledCount != 1 {
+		t.Fatalf("expected 1 finger after header, got %+v", plainBullets)
+	}
+}
+
 // --- 5. End-to-End CLI Flow & Security Invariant Tests ---
 
 func TestRunFingerPrintWithDepsEnableConfirmCancelAndVerify(t *testing.T) {

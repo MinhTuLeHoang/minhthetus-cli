@@ -96,6 +96,9 @@ func (b *darwinBackend) Inspect() (FingerprintStatus, error) {
 	}
 	if usesSudoLocal {
 		st.Details = append(st.Details, "Target mode: Sonoma+ persistent /etc/pam.d/sudo_local (survives macOS updates)")
+		if IsActivePAMModule(sudoContent, DarwinPAMTidModule) {
+			st.Warnings = append(st.Warnings, fmt.Sprintf("Legacy active %s detected in %s; remove it from %s if %s is active to avoid double Touch ID prompts.", DarwinPAMTidModule, DarwinSudoPath, DarwinSudoPath, DarwinSudoLocalPath))
+		}
 	} else {
 		st.Details = append(st.Details, "Target mode: /etc/pam.d/sudo (legacy or sudo_local not included)")
 		st.Warnings = append(st.Warnings, "Editing /etc/pam.d/sudo directly may be reset by future macOS system updates.")
@@ -154,6 +157,8 @@ func (b *darwinBackend) PlanEnable() (ActionPlan, error) {
 		}
 	}
 
+	legacySudoHasTid := usesSudoLocal && IsActivePAMModule(sudoContent, DarwinPAMTidModule)
+
 	reattachPath := b.findPamReattachPath()
 	res, err := PlanDarwinPAMEnable(DarwinPAMEnableInput{
 		TargetPath:      targetPath,
@@ -166,10 +171,18 @@ func (b *darwinBackend) PlanEnable() (ActionPlan, error) {
 		return ActionPlan{}, err
 	}
 	if res.AlreadyEnabled {
+		desc := res.Note
+		var alreadyWarnings []string
+		if legacySudoHasTid {
+			w := fmt.Sprintf("Legacy active %s detected in %s alongside %s; remove %s from %s to prevent double Touch ID prompts.", DarwinPAMTidModule, DarwinSudoPath, DarwinSudoLocalPath, DarwinPAMTidModule, DarwinSudoPath)
+			alreadyWarnings = append(alreadyWarnings, w)
+			desc = desc + " Warning: " + w
+		}
 		return ActionPlan{
 			Title:            "Enable Touch ID for sudo",
-			Description:      res.Note,
+			Description:      desc,
 			TargetPath:       res.TargetPath,
+			Warnings:         alreadyWarnings,
 			AlreadySatisfied: true,
 		}, nil
 	}
@@ -183,6 +196,8 @@ func (b *darwinBackend) PlanEnable() (ActionPlan, error) {
 	var warnings []string
 	if !usesSudoLocal {
 		warnings = append(warnings, "Target is /etc/pam.d/sudo; macOS updates may overwrite this file.")
+	} else if legacySudoHasTid {
+		warnings = append(warnings, fmt.Sprintf("Legacy active %s detected in %s; remove it from %s after enabling %s to prevent double Touch ID prompts.", DarwinPAMTidModule, DarwinSudoPath, DarwinSudoPath, DarwinSudoLocalPath))
 	}
 	if out, err := b.runner.Output("bioutil", "-c"); err == nil {
 		if n, convErr := strconv.Atoi(strings.TrimSpace(string(out))); convErr == nil && n == 0 {

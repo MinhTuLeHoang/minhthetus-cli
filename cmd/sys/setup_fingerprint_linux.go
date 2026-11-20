@@ -43,8 +43,7 @@ func (b *linuxBackend) Inspect() (FingerprintStatus, error) {
 	hasFprintdList := false
 	if _, err := b.runner.LookPath("fprintd-list"); err == nil && currentUser != "" {
 		hasFprintdList = true
-		out, _ := b.runner.CombinedOutput("fprintd-list", currentUser)
-		fpStatus = DetectFprintdEnrollment(string(out))
+		fpStatus = b.queryFprintdStatus(currentUser)
 	}
 
 	sudoBytes, sudoErr := b.fs.ReadFile(LinuxSudoPath)
@@ -53,11 +52,8 @@ func (b *linuxBackend) Inspect() (FingerprintStatus, error) {
 
 	enabledInSudo := IsActivePAMModule(sudoContent, LinuxPamFprintdName)
 	enabledViaInclude := ""
-	for _, inc := range ParsePAMIncludes(sudoContent) {
-		if IsActivePAMModule(includedMap[inc], LinuxPamFprintdName) {
-			enabledViaInclude = inc
-			break
-		}
+	if inc, ok := findActivePAMModuleInIncludes(sudoContent, includedMap, LinuxPamFprintdName); ok {
+		enabledViaInclude = inc
 	}
 
 	hasPamAuthUpdate := false
@@ -153,8 +149,7 @@ func (b *linuxBackend) PlanEnable() (ActionPlan, error) {
 	if _, err := b.runner.LookPath("fprintd-list"); err != nil {
 		return ActionPlan{}, fmt.Errorf("fprintd-list was not found in PATH; install fprintd so hardware and enrolled prints can be verified safely")
 	}
-	fpOut, _ := b.runner.CombinedOutput("fprintd-list", currentUser)
-	fpStatus := DetectFprintdEnrollment(string(fpOut))
+	fpStatus := b.queryFprintdStatus(currentUser)
 	if !fpStatus.HasDevice {
 		return ActionPlan{}, fmt.Errorf("no supported fingerprint reader detected (%s). Check `lsusb` and `systemctl status fprintd.service`; aborting to avoid blocking sudo prompts", fpStatus.Reason)
 	}
@@ -320,6 +315,14 @@ func (b *linuxBackend) PlanDisable() (ActionPlan, error) {
 		}
 	}
 
+	if inc, ok := findActivePAMModuleInIncludes(sudoContent, includedMap, LinuxPamFprintdName); ok {
+		incPath := filepath.Join("/etc/pam.d", inc)
+		return ActionPlan{}, fmt.Errorf(
+			"%s is active in included PAM file %s (not directly in %s and not managed by pam-auth-update/authselect); inspect and edit %s manually to avoid breaking system-wide auth",
+			LinuxPamFprintdName, incPath, LinuxSudoPath, incPath,
+		)
+	}
+
 	return ActionPlan{
 		Title:            "Disable fprintd for sudo",
 		Description:      fmt.Sprintf("%s is not enabled in %s or included auth stacks.", LinuxPamFprintdName, LinuxSudoPath),
@@ -332,12 +335,36 @@ func (b *linuxBackend) Verify() error {
 	return b.runner.RunInteractive("sh", "-c", "sudo -k && sudo -v")
 }
 
+func (b *linuxBackend) queryFprintdStatus(username string) FprintdStatus {
+	out, err := b.runner.CombinedOutput("fprintd-list", username)
+	st := DetectFprintdEnrollment(string(out))
+	if err != nil && strings.TrimSpace(string(out)) == "" {
+		st.HasDevice = false
+		st.Reason = fmt.Sprintf("fprintd-list failed: %v", err)
+	}
+	return st
+}
+
 func (b *linuxBackend) readIncludedPAMFiles(sudoContent string) map[string]string {
 	out := map[string]string{}
-	for _, inc := range ParsePAMIncludes(sudoContent) {
+	queue := ParsePAMIncludes(sudoContent)
+	visited := map[string]bool{}
+	for len(queue) > 0 {
+		inc := queue[0]
+		queue = queue[1:]
+		if visited[inc] {
+			continue
+		}
+		visited[inc] = true
 		path := filepath.Join("/etc/pam.d", inc)
 		if data, err := b.fs.ReadFile(path); err == nil {
-			out[inc] = string(data)
+			content := string(data)
+			out[inc] = content
+			for _, child := range ParsePAMIncludes(content) {
+				if !visited[child] {
+					queue = append(queue, child)
+				}
+			}
 		}
 	}
 	return out

@@ -268,8 +268,20 @@ func PlanDarwinPAMEnable(in DarwinPAMEnableInput) (PAMPlanResult, error) {
 	} else if target == DarwinSudoLocalPath {
 		inserted := false
 		for _, line := range lines {
+			if reattachLine != "" {
+				if r, ok := parsePAMRule(line); ok && r.pamType == "auth" && pamModuleMatches(r.module, DarwinPAMReattachModule) {
+					continue
+				}
+			}
 			trimmed := strings.TrimSpace(line)
-			if !inserted && strings.HasPrefix(trimmed, "#") && strings.Contains(trimmed, DarwinPAMTidModule) && strings.Contains(trimmed, "auth") {
+			isCommentedTidRule := false
+			if strings.HasPrefix(trimmed, "#") {
+				candidate := strings.TrimSpace(strings.TrimPrefix(trimmed, "#"))
+				if r, ok := parsePAMRule(candidate); ok && r.pamType == "auth" && pamModuleMatches(r.module, DarwinPAMTidModule) {
+					isCommentedTidRule = true
+				}
+			}
+			if !inserted && isCommentedTidRule {
 				if reattachLine != "" {
 					updated = append(updated, reattachLine)
 				}
@@ -288,21 +300,35 @@ func PlanDarwinPAMEnable(in DarwinPAMEnableInput) (PAMPlanResult, error) {
 	} else {
 		// Pre-Sonoma /etc/pam.d/sudo: insert before the first active auth directive.
 		firstAuthIdx := -1
+		firstNonReattachAuthIdx := -1
 		for i, line := range lines {
 			if r, ok := parsePAMRule(line); ok && r.pamType == "auth" {
-				firstAuthIdx = i
-				break
+				if firstAuthIdx < 0 {
+					firstAuthIdx = i
+				}
+				if !pamModuleMatches(r.module, DarwinPAMReattachModule) && firstNonReattachAuthIdx < 0 {
+					firstNonReattachAuthIdx = i
+				}
 			}
 		}
-		if firstAuthIdx < 0 {
+		insertIdx := firstAuthIdx
+		if reattachLine == "" && firstNonReattachAuthIdx >= 0 {
+			insertIdx = firstNonReattachAuthIdx
+		}
+		if insertIdx < 0 {
 			return PAMPlanResult{}, fmt.Errorf("refusing to modify %s: no existing auth directive found to preserve fallback authentication", target)
 		}
 		for i, line := range lines {
-			if i == firstAuthIdx {
+			if i == insertIdx {
 				if reattachLine != "" {
 					updated = append(updated, reattachLine)
 				}
 				updated = append(updated, tidLine)
+			}
+			if reattachLine != "" {
+				if r, ok := parsePAMRule(line); ok && r.pamType == "auth" && pamModuleMatches(r.module, DarwinPAMReattachModule) {
+					continue
+				}
 			}
 			updated = append(updated, line)
 		}
@@ -408,15 +434,20 @@ func DetectFprintdEnrollment(output string) FprintdStatus {
 	}
 
 	var fingers []string
+	seenHeader := false
 	for _, line := range strings.Split(trimmed, "\n") {
 		t := strings.TrimSpace(line)
-		if strings.HasPrefix(t, "- #") {
+		if strings.Contains(strings.ToLower(t), "fingerprints for user") {
+			seenHeader = true
+			continue
+		}
+		if isNumberedFprintdLine(t) {
 			if idx := strings.Index(t, ":"); idx >= 0 && idx+1 < len(t) {
 				fingers = append(fingers, strings.TrimSpace(t[idx+1:]))
 			} else {
 				fingers = append(fingers, t)
 			}
-		} else if strings.HasPrefix(t, "-") && !strings.HasPrefix(t, "---") {
+		} else if seenHeader && strings.HasPrefix(t, "-") && !strings.HasPrefix(t, "---") {
 			fingers = append(fingers, strings.TrimSpace(strings.TrimPrefix(t, "-")))
 		}
 	}
@@ -434,6 +465,46 @@ func DetectFprintdEnrollment(output string) FprintdStatus {
 	}
 
 	return FprintdStatus{HasDevice: false, Reason: trimmed}
+}
+
+func isNumberedFprintdLine(t string) bool {
+	if !strings.HasPrefix(t, "- #") {
+		return false
+	}
+	rest := strings.TrimPrefix(t, "- #")
+	colon := strings.Index(rest, ":")
+	if colon <= 0 {
+		return false
+	}
+	_, err := strconv.Atoi(rest[:colon])
+	return err == nil
+}
+
+// findActivePAMModuleInIncludes traverses PAM includes recursively via BFS with a visited-set cycle guard.
+func findActivePAMModuleInIncludes(rootContent string, includedContents map[string]string, moduleName string) (string, bool) {
+	queue := ParsePAMIncludes(rootContent)
+	visited := map[string]bool{}
+	for len(queue) > 0 {
+		inc := queue[0]
+		queue = queue[1:]
+		if visited[inc] {
+			continue
+		}
+		visited[inc] = true
+		incContent, ok := includedContents[inc]
+		if !ok {
+			continue
+		}
+		if IsActivePAMModule(incContent, moduleName) {
+			return inc, true
+		}
+		for _, child := range ParsePAMIncludes(incContent) {
+			if !visited[child] {
+				queue = append(queue, child)
+			}
+		}
+	}
+	return "", false
 }
 
 // PlanLinuxSudoPAMEnable plans safe insertion of `auth sufficient pam_fprintd.so` into /etc/pam.d/sudo
@@ -457,16 +528,14 @@ func PlanLinuxSudoPAMEnable(in LinuxPAMEnableInput) (PAMPlanResult, error) {
 		}, nil
 	}
 
-	// Prevent double fingerprint prompts if an included stack file already enables pam_fprintd.so.
-	for _, inc := range ParsePAMIncludes(in.SudoContent) {
-		if incContent, ok := in.IncludedContents[inc]; ok && IsActivePAMModule(incContent, LinuxPamFprintdName) {
-			return PAMPlanResult{
-				TargetPath:     target,
-				AlreadyEnabled: true,
-				NewContent:     in.SudoContent,
-				Note:           fmt.Sprintf("Fingerprint authentication (%s) is already active via included PAM file %q; skipping duplicate entry in %s.", LinuxPamFprintdName, inc, target),
-			}, nil
-		}
+	// Prevent double fingerprint prompts if any direct or transitive included stack file already enables pam_fprintd.so.
+	if inc, ok := findActivePAMModuleInIncludes(in.SudoContent, in.IncludedContents, LinuxPamFprintdName); ok {
+		return PAMPlanResult{
+			TargetPath:     target,
+			AlreadyEnabled: true,
+			NewContent:     in.SudoContent,
+			Note:           fmt.Sprintf("Fingerprint authentication (%s) is already active via included PAM file %q; skipping duplicate entry in %s.", LinuxPamFprintdName, inc, target),
+		}, nil
 	}
 
 	lines := splitLinesPreserve(in.SudoContent)

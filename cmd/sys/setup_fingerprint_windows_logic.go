@@ -130,40 +130,191 @@ func FormatWindowsOSLabel(snap WindowsProbeSnapshot) string {
 	return strings.Join(parts, " ")
 }
 
-// ParseSCServiceOutput parses `sc query WbioSrvc` and `sc qc WbioSrvc` outputs.
+// BuildWindowsElevationPSCommand constructs a PowerShell command that runs cmdLine elevated
+// via UAC and guarantees a non-zero exit code on UAC cancellation or Start-Process failure.
+func BuildWindowsElevationPSCommand(cmdLine string) string {
+	escaped := strings.ReplaceAll(cmdLine, "'", "''")
+	return fmt.Sprintf(
+		`$ErrorActionPreference = 'Stop'; try { $p = Start-Process cmd -ArgumentList @('/c', '%s') -Verb RunAs -Wait -PassThru; if (-not $p) { exit 1 }; exit $p.ExitCode } catch { Write-Error -ErrorAction Continue $_; exit 1 }`,
+		escaped,
+	)
+}
+
+// ParseWindowsServiceStartDWORD maps HKLM\SYSTEM\CurrentControlSet\Services\<svc>\Start DWORD values.
+func ParseWindowsServiceStartDWORD(startVal uint32) string {
+	switch startVal {
+	case 2:
+		return "Automatic"
+	case 3:
+		return "Manual"
+	case 4:
+		return "Disabled"
+	default:
+		return "Unknown"
+	}
+}
+
+// ParseSCServiceOutput parses `sc query WbioSrvc` and `sc qc WbioSrvc` outputs,
+// supporting both English keywords and numeric codes on localized Windows systems.
 func ParseSCServiceOutput(queryOut, qcOut string) (state string, startType string) {
-	state = "Unknown"
-	startType = "Unknown"
-
-	for _, line := range strings.Split(queryOut, "\n") {
-		upper := strings.ToUpper(strings.TrimSpace(line))
-		if strings.Contains(upper, "STATE") {
-			switch {
-			case strings.Contains(upper, "RUNNING"):
-				state = "Running"
-			case strings.Contains(upper, "STOPPED"):
-				state = "Stopped"
-			case strings.Contains(upper, "PAUSED"):
-				state = "Paused"
-			}
-		}
-	}
-
-	for _, line := range strings.Split(qcOut, "\n") {
-		upper := strings.ToUpper(strings.TrimSpace(line))
-		if strings.Contains(upper, "START_TYPE") {
-			switch {
-			case strings.Contains(upper, "AUTO_START"):
-				startType = "Automatic"
-			case strings.Contains(upper, "DEMAND_START"):
-				startType = "Manual"
-			case strings.Contains(upper, "DISABLED"):
-				startType = "Disabled"
-			}
-		}
-	}
-
+	state = parseSCQueryState(queryOut)
+	startType = parseSCStartType(qcOut)
 	return state, startType
+}
+
+func parseSCQueryState(queryOut string) string {
+	lines := strings.Split(queryOut, "\n")
+	// Pass 1: explicit STATE line or unambiguous state keyword.
+	for _, line := range lines {
+		upper := strings.ToUpper(strings.TrimSpace(line))
+		if !strings.Contains(upper, ":") {
+			continue
+		}
+		if strings.Contains(upper, "STATE") {
+			if st := matchSCStateLine(upper); st != "Unknown" {
+				return st
+			}
+		}
+	}
+	// Pass 2: localized STATE label — match unambiguous state keywords or numeric code on the line after TYPE.
+	afterType := false
+	for _, line := range lines {
+		upper := strings.ToUpper(strings.TrimSpace(line))
+		if !strings.Contains(upper, ":") {
+			continue
+		}
+		parts := strings.SplitN(upper, ":", 2)
+		val := strings.TrimSpace(parts[1])
+		if strings.Contains(val, "WIN32_") || strings.Contains(val, "KERNEL_") || strings.Contains(val, "DRIVER") {
+			afterType = true
+			continue
+		}
+		if afterType {
+			return matchSCStateLine(upper)
+		}
+		if st := matchSCStateKeywordOnly(upper); st != "Unknown" {
+			return st
+		}
+	}
+	return "Unknown"
+}
+
+func matchSCStateKeywordOnly(upperLine string) string {
+	switch {
+	case strings.Contains(upperLine, "START_PENDING"),
+		strings.Contains(upperLine, "STOP_PENDING"),
+		strings.Contains(upperLine, "CONTINUE_PENDING"),
+		strings.Contains(upperLine, "PAUSE_PENDING"):
+		return "Unknown"
+	case strings.Contains(upperLine, "RUNNING"):
+		return "Running"
+	case strings.Contains(upperLine, "STOPPED"):
+		return "Stopped"
+	case strings.Contains(upperLine, "PAUSED"):
+		return "Paused"
+	default:
+		return "Unknown"
+	}
+}
+
+func matchSCStateLine(upperLine string) string {
+	if st := matchSCStateKeywordOnly(upperLine); st != "Unknown" {
+		return st
+	}
+	if code, ok := parseSCLeadingInt(upperLine); ok {
+		switch code {
+		case 1:
+			return "Stopped"
+		case 4:
+			return "Running"
+		case 7:
+			return "Paused"
+		}
+	}
+	return "Unknown"
+}
+
+func parseSCStartType(qcOut string) string {
+	lines := strings.Split(qcOut, "\n")
+	// Pass 1: explicit START_TYPE label or unambiguous start-type keyword.
+	for _, line := range lines {
+		upper := strings.ToUpper(strings.TrimSpace(line))
+		if !strings.Contains(upper, ":") {
+			continue
+		}
+		if strings.Contains(upper, "START_TYPE") {
+			if st := matchSCStartTypeLine(upper); st != "Unknown" {
+				return st
+			}
+		}
+		if st := matchSCStartTypeKeywordOnly(upper); st != "Unknown" {
+			return st
+		}
+	}
+	// Pass 2: localized START_TYPE label — parse numeric code on the line immediately after TYPE.
+	afterType := false
+	for _, line := range lines {
+		upper := strings.ToUpper(strings.TrimSpace(line))
+		if !strings.Contains(upper, ":") {
+			continue
+		}
+		parts := strings.SplitN(upper, ":", 2)
+		val := strings.TrimSpace(parts[1])
+		if strings.Contains(val, "WIN32_") || strings.Contains(val, "KERNEL_") || strings.Contains(val, "DRIVER") {
+			afterType = true
+			continue
+		}
+		if afterType {
+			return matchSCStartTypeLine(upper)
+		}
+	}
+	return "Unknown"
+}
+
+func matchSCStartTypeKeywordOnly(upperLine string) string {
+	switch {
+	case strings.Contains(upperLine, "AUTO_START"):
+		return "Automatic"
+	case strings.Contains(upperLine, "DEMAND_START"):
+		return "Manual"
+	case strings.Contains(upperLine, "DISABLED"):
+		return "Disabled"
+	default:
+		return "Unknown"
+	}
+}
+
+func matchSCStartTypeLine(upperLine string) string {
+	if st := matchSCStartTypeKeywordOnly(upperLine); st != "Unknown" {
+		return st
+	}
+	if code, ok := parseSCLeadingInt(upperLine); ok {
+		switch code {
+		case 2:
+			return "Automatic"
+		case 3:
+			return "Manual"
+		case 4:
+			return "Disabled"
+		}
+	}
+	return "Unknown"
+}
+
+func parseSCLeadingInt(line string) (int, bool) {
+	parts := strings.SplitN(line, ":", 2)
+	if len(parts) != 2 {
+		return 0, false
+	}
+	fields := strings.Fields(strings.TrimSpace(parts[1]))
+	if len(fields) == 0 {
+		return 0, false
+	}
+	n, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return 0, false
+	}
+	return n, true
 }
 
 // ParsePnPBiometricOutput extracts device names/IDs from `pnputil /enum-devices /class Biometric` output.
@@ -200,19 +351,46 @@ func ParseSudoConfigState(regVal uint32, hasRegVal bool, cliOut string) string {
 			return "normal"
 		}
 	}
-	lower := strings.ToLower(cliOut)
-	switch {
-	case strings.Contains(lower, "normal"):
-		return "normal"
-	case strings.Contains(lower, "disableinput"):
-		return "disableInput"
-	case strings.Contains(lower, "forcenewwindow"):
-		return "forceNewWindow"
-	case strings.Contains(lower, "disabled"):
-		return "disabled"
-	default:
-		return "unknown"
+
+	foundModes := map[string]bool{}
+	for _, line := range strings.Split(cliOut, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		lower := strings.ToLower(trimmed)
+		// Skip CLI usage/help syntax lines such as `sudo config --enable <disabled|forceNewWindow|disableInput|normal>`.
+		if strings.Contains(lower, "usage:") ||
+			strings.Contains(lower, "--enable") ||
+			strings.Contains(lower, "--disable") ||
+			strings.Contains(lower, "<") ||
+			strings.Contains(lower, ">") ||
+			strings.Contains(lower, "|") {
+			continue
+		}
+		tokens := strings.FieldsFunc(lower, func(r rune) bool {
+			return !((r >= 'a' && r <= 'z') || (r >= '0' && r <= '9'))
+		})
+		for _, tok := range tokens {
+			switch tok {
+			case "normal":
+				foundModes["normal"] = true
+			case "disableinput":
+				foundModes["disableInput"] = true
+			case "forcenewwindow":
+				foundModes["forceNewWindow"] = true
+			case "disabled":
+				foundModes["disabled"] = true
+			}
+		}
 	}
+
+	if len(foundModes) == 1 {
+		for mode := range foundModes {
+			return mode
+		}
+	}
+	return "unknown"
 }
 
 // BuildWindowsStatus translates a WindowsProbeSnapshot into a user-facing FingerprintStatus.
@@ -220,7 +398,8 @@ func BuildWindowsStatus(snap WindowsProbeSnapshot) FingerprintStatus {
 	hwDetected := len(snap.WinBioFingerprintUnits) > 0 || len(snap.PnPBiometricDevices) > 0
 	enrolled := hwDetected && (snap.AccountEnrolledFactors&WinBioTypeFingerprint != 0)
 
-	uacCredPrompt := snap.HasConsentPromptBehavior && snap.ConsentPromptBehaviorAdmin == 1
+	uacEnabled := !snap.HasEnableLUA || snap.EnableLUA != 0
+	uacCredPrompt := uacEnabled && snap.HasConsentPromptBehavior && snap.ConsentPromptBehaviorAdmin == 1
 	wbioRunning := snap.WbioSrvcState == "Running"
 	sudoInlineReady := !snap.HasNativeSudoExe || snap.NativeSudoMode == "normal"
 
@@ -270,6 +449,9 @@ func BuildWindowsStatus(snap WindowsProbeSnapshot) FingerprintStatus {
 		}
 	}
 
+	if snap.HasEnableLUA && snap.EnableLUA == 0 {
+		st.Warnings = append(st.Warnings, "UAC is disabled (EnableLUA=0); consent.exe credential prompts and Windows Hello UAC verification are inactive.")
+	}
 	if snap.BiometricsPolicyBlocked {
 		st.Warnings = append(st.Warnings, "Windows Biometrics is restricted by Group Policy (HKLM\\SOFTWARE\\Policies\\Microsoft\\Biometrics).")
 	}
@@ -312,8 +494,11 @@ func PlanWindowsEnableActions(snap WindowsProbeSnapshot) WindowsConfigPlan {
 	if snap.BiometricsPolicyBlocked {
 		warnings = append(warnings, "Biometrics Group Policy appears disabled/blocked; administrator policy changes may be required.")
 	}
+	if hwDetected && snap.HasEnableLUA && snap.EnableLUA == 0 {
+		warnings = append(warnings, "UAC is disabled (EnableLUA=0); ConsentPromptBehaviorAdmin=1 will not trigger Windows Hello prompts until EnableLUA=1 is enabled and Windows reboots.")
+	}
 
-	if snap.WbioSrvcStartType == "Disabled" || snap.WbioSrvcState == "Stopped" {
+	if hwDetected && (snap.WbioSrvcStartType == "Disabled" || snap.WbioSrvcState == "Stopped") {
 		if snap.WbioSrvcStartType == "Disabled" {
 			steps = append(steps, WindowsActionStep{
 				Key:         "enable_wbiosrvc",
@@ -331,7 +516,7 @@ func PlanWindowsEnableActions(snap WindowsProbeSnapshot) WindowsConfigPlan {
 		}
 	}
 
-	if snap.HasNativeSudoExe && snap.NativeSudoMode != "normal" {
+	if hwDetected && snap.HasNativeSudoExe && snap.NativeSudoMode != "normal" {
 		steps = append(steps, WindowsActionStep{
 			Key:         "enable_native_sudo",
 			Description: "Enable Windows 11 24H2+ native sudo in inline ('normal') mode",
@@ -350,7 +535,7 @@ func PlanWindowsEnableActions(snap WindowsProbeSnapshot) WindowsConfigPlan {
 			RequiresUAC: true,
 		})
 	} else if !hwDetected {
-		warnings = append(warnings, "Skipping UAC ConsentPromptBehaviorAdmin=1 because no physical fingerprint sensor was detected (changing it without a sensor would require typing a password on every UAC prompt).")
+		warnings = append(warnings, "Skipping WbioSrvc, native sudo.exe, and UAC ConsentPromptBehaviorAdmin=1 changes because no physical fingerprint sensor was detected.")
 	}
 
 	openSettings := ""
@@ -366,8 +551,12 @@ func PlanWindowsEnableActions(snap WindowsProbeSnapshot) WindowsConfigPlan {
 
 	if len(steps) == 0 {
 		msg := "All feasible Windows biometric/sudo settings are already configured."
-		if !hwDetected && !snap.HasNativeSudoExe {
-			msg = fmt.Sprintf("No additional Windows changes are applicable: no physical fingerprint reader detected, native sudo.exe requires Build >= %d (current: %d), and Windows UAC/Secure Desktop cannot be bypassed.", Windows1124H2SudoBuild, snap.CurrentBuild)
+		if !hwDetected {
+			if snap.HasNativeSudoExe {
+				msg = "No Windows changes are applicable: no physical fingerprint reader was detected, so WbioSrvc, native sudo.exe, and UAC credential prompt settings were left untouched."
+			} else {
+				msg = fmt.Sprintf("No additional Windows changes are applicable: no physical fingerprint reader detected, native sudo.exe requires Build >= %d (current: %d), and Windows UAC/Secure Desktop cannot be bypassed.", Windows1124H2SudoBuild, snap.CurrentBuild)
+			}
 		}
 		return WindowsConfigPlan{
 			Title:            "Windows Fingerprint & UAC Readiness",
@@ -409,15 +598,23 @@ func PlanWindowsDisableActions(snap WindowsProbeSnapshot, saved *WindowsSavedSta
 
 	if saved != nil && saved.ModifiedNativeSudo && snap.HasNativeSudoExe && saved.PrevNativeSudoMode != "" && saved.PrevNativeSudoMode != snap.NativeSudoMode {
 		cmdStr := "sudo config --disable"
-		if saved.PrevNativeSudoMode != "disabled" {
+		targetDesc := "disabled"
+		switch saved.PrevNativeSudoMode {
+		case "forceNewWindow", "disableInput", "normal":
 			cmdStr = "sudo config --enable " + saved.PrevNativeSudoMode
+			targetDesc = saved.PrevNativeSudoMode
+		case "disabled", "unknown":
+			cmdStr = "sudo config --disable"
+			targetDesc = "disabled"
 		}
-		steps = append(steps, WindowsActionStep{
-			Key:         "restore_native_sudo",
-			Description: fmt.Sprintf("Restore Windows sudo.exe mode to %s", saved.PrevNativeSudoMode),
-			Command:     cmdStr,
-			RequiresUAC: true,
-		})
+		if !(cmdStr == "sudo config --disable" && snap.NativeSudoMode == "disabled") {
+			steps = append(steps, WindowsActionStep{
+				Key:         "restore_native_sudo",
+				Description: fmt.Sprintf("Restore Windows sudo.exe mode to %s", targetDesc),
+				Command:     cmdStr,
+				RequiresUAC: true,
+			})
+		}
 	}
 
 	if len(steps) == 0 {
