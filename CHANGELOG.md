@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-11-20
+
+### Added
+- Added interactive sys alias command (View/Search, Add, Edit, Delete) with cross-shell synchronization across PowerShell 5.1, PowerShell 7+, Git Bash, Bash, and Zsh
+- Added stateful multi-select Suggestions (master, pull, c) in sys alias that hides applied presets and auto-hides the menu option when all are applied
+
 ## [1.12.0] - 2026-11-20
 
 ### Added
