@@ -59,6 +59,22 @@ This hidden directory is automatically created in your home folder when you firs
   - The CLI normally runs in a subshell, meaning it cannot change the environment of your primary terminal (like changing directories or switching Node versions).
   - This wrapper captures specific shell commands emitted by the CLI into a temporary file and "sources" them in your current session.
 
+### 4. `git-tag-presets.json`
+- **File Type**: `JSON`
+- **Data Interface**:
+  ```typescript
+  interface TagPresets {
+    sandbox: string[]; // Sandbox tag prefixes (default: ["qc-v", "stg-v", "qc-cicd-v"])
+    prod: string[];    // Production tag prefixes (default: ["release-v", "v"])
+  }
+  ```
+- **Purpose**: Stores default and user-learned tag prefix presets for dynamic repository tagging.
+- **Supported CLI**: `minhthetus-cli git tag-dev-stg`
+- **Functionality**:
+  - Seeds default sandbox and production tag prefix presets on first run.
+  - Automatically learns and persists custom prefixes entered in any repository.
+  - Populates the interactive multi-select rule configuration menu (`--reconfig` or initial setup).
+
 ---
 
 ## Shell Completion Profiles (Managed Outside `~/.minhthetus-cli/`)
@@ -81,4 +97,5 @@ Rather than generating static `completion.zsh`/`completion.bash` files inside `~
   - **cmd/uninstall.go**: Performs block-aware cleanup of shell completion hooks and binary removal.
   - **internal/config/**: Manages `~/.minhthetus-cli/` JSON configuration files.
   - **internal/git/**: Handles Git account and repository tracking logic.
+  - **internal/config/tag_presets.go** & **cmd/git/tag_dev_stg.go**: Manage global tag prefix presets in `git-tag-presets.json`.
 - **Permissions**: Configuration files are stored with restricted permissions to protect sensitive information.

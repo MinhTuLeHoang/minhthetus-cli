@@ -76,6 +76,12 @@ func RunWithSpinner(title string, fn func() error) error {
 		}
 	}()
 
-	_, err := p.Run()
-	return err
+	finalModel, err := p.Run()
+	if err != nil {
+		return err
+	}
+	if sm, ok := finalModel.(spinnerModel); ok && sm.err != nil {
+		return sm.err
+	}
+	return nil
 }

@@ -1,16 +1,21 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// ErrInputCanceled is returned by Input when the user cancels with Esc or Ctrl+C.
+var ErrInputCanceled = errors.New("input canceled")
+
 type inputModel struct {
 	textInput textinput.Model
 	value     string
 	quitting  bool
+	canceled  bool
 }
 
 func (m inputModel) Init() tea.Cmd {
@@ -22,6 +27,7 @@ func (m inputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "esc":
+			m.canceled = true
 			m.quitting = true
 			return m, tea.Quit
 		case "enter":
@@ -51,8 +57,11 @@ func (m inputModel) View() string {
 	return fmt.Sprintf("\n%s\n\n%s\n", m.textInput.Placeholder, m.textInput.View())
 }
 
-// Input displays a text input and returns the value.
+// Input displays a text input and returns the value, or ErrInputCanceled on Esc/Ctrl+C.
 func Input(placeholder, defaultValue string) (string, error) {
+	if !isInteractiveTTY() {
+		return "", ErrNonInteractiveTTY
+	}
 	ti := textinput.New()
 	ti.Placeholder = placeholder
 	if defaultValue != "" {
@@ -70,5 +79,10 @@ func Input(placeholder, defaultValue string) (string, error) {
 		return "", err
 	}
 
-	return finalModel.(inputModel).value, nil
+	fm := finalModel.(inputModel)
+	if fm.canceled {
+		return "", ErrInputCanceled
+	}
+
+	return fm.value, nil
 }

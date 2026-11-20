@@ -1,10 +1,14 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
+
+// ErrSelectionCanceled is returned by MultiChoose when the user cancels with Esc or Ctrl+C.
+var ErrSelectionCanceled = errors.New("selection canceled")
 
 type multiChooseModel struct {
 	title    string
@@ -79,17 +83,32 @@ func (m multiChooseModel) View() string {
 	return s
 }
 
-// MultiChoose displays a list of options allowing multi-selection using space, and returns a boolean slice of selections.
-func MultiChoose(title string, options []string, preselected []bool, initialCursor int) ([]bool, error) {
+func newMultiChooseModel(title string, options []string, preselected []bool, initialCursor int) multiChooseModel {
 	selected := make([]bool, len(options))
 	copy(selected, preselected)
 
-	m := multiChooseModel{
+	if initialCursor < 0 || initialCursor >= len(options) {
+		initialCursor = 0
+	}
+
+	return multiChooseModel{
 		title:    title,
 		options:  options,
 		selected: selected,
 		cursor:   initialCursor,
 	}
+}
+
+// MultiChoose displays a list of options allowing multi-selection using space, and returns a boolean slice of selections.
+func MultiChoose(title string, options []string, preselected []bool, initialCursor int) ([]bool, error) {
+	if len(options) == 0 {
+		return nil, fmt.Errorf("no options provided")
+	}
+	if !isInteractiveTTY() {
+		return nil, ErrNonInteractiveTTY
+	}
+
+	m := newMultiChooseModel(title, options, preselected, initialCursor)
 
 	p := tea.NewProgram(m)
 	finalModel, err := p.Run()
@@ -99,7 +118,7 @@ func MultiChoose(title string, options []string, preselected []bool, initialCurs
 
 	fm := finalModel.(multiChooseModel)
 	if fm.canceled {
-		return nil, fmt.Errorf("selection canceled")
+		return nil, ErrSelectionCanceled
 	}
 
 	return fm.selected, nil

@@ -126,6 +126,12 @@ func Confirm(prompt string, timeout time.Duration, autoApprove bool) (bool, erro
 
 // ConfirmWithDefault asks the user for confirmation with an explicit default cursor selection.
 func ConfirmWithDefault(prompt string, timeout time.Duration, autoApprove bool, defaultYes bool) (bool, error) {
+	if !isInteractiveTTY() {
+		if autoApprove {
+			return true, nil
+		}
+		return false, ErrNonInteractiveTTY
+	}
 	cursor := 0
 	if !defaultYes {
 		cursor = 1
