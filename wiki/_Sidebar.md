@@ -24,6 +24,7 @@
 * [[Web-Start]]
 
 ### 💻 System Subcommands
+* [[Sys-Alias]]
 * [[Sys-Size]]
 * [[Sys-Clean-My-Mac]]
 * [[Sys-Host]]
