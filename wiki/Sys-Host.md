@@ -1,6 +1,6 @@
 # Sys Host Command
 
-The `sys host` command enables interactive search, view, addition, deletion, and formatting/sorting of the system host file (`/etc/hosts`).
+The `sys host` command enables interactive search, view, addition, deletion, and formatting/sorting of the system host file (`/etc/hosts` on macOS/Linux or `C:\Windows\System32\drivers\etc\hosts` on Windows).
 
 ## Usage
 
@@ -12,8 +12,8 @@ minhthetus-cli sys host
 
 When you run the command, it opens an interactive menu using Bubble Tea with the following actions:
 
-1. **Search Hosts**: Query `/etc/hosts` for domains or IPs. It displays exact matches along with relevant results (e.g. sharing the same IP or the same normalized domain).
-2. **Show All Hosts**: Lists all parsed host entries cleanly, sorted according to the formatting rules.
+1. **Search Hosts**: Query hosts file for domains or IPs. It displays exact matches along with relevant results (e.g. sharing the same IP or the same normalized domain). When relevant results or matches are long, an interactive scrollable viewer opens starting at the top so exact matches are never pushed out of view.
+2. **Show All Hosts**: Lists all parsed host entries cleanly, sorted according to the formatting rules (using the scroll viewer if list is long).
 3. **Add Host**: Interactively add a new IP-domain mapping. If you enter only one of the values, the CLI will prompt you for the missing piece. It automatically validates against duplicates.
 4. **Delete Host**: Filters entries by query, prompts you to select an host, and requests confirmation before deleting it.
 5. **Format & Sort hosts file**: Standardizes the layout of the `/etc/hosts` file based on the formatting rules.
@@ -35,11 +35,12 @@ When formatting or writing back changes, the file is standardized using these st
 *   **Spacing**: Different IP addresses are separated by a single blank line.
 
 > [!IMPORTANT]
-> Writing changes to `/etc/hosts` requires superuser (`sudo`) privileges. The tool writes the formatted content to a temporary file first and then executes `sudo cp` to overwrite the hosts file, prompting you for your macOS password if necessary.
+> Writing changes to the hosts file requires elevated privileges (`sudo` on macOS/Linux or Administrator on Windows). The tool writes the formatted content to a temporary file first and then overwrites the hosts file using elevated privileges (prompting for `sudo` on Unix or UAC prompt on Windows if not already elevated). After writing changes, the CLI automatically flushes the local DNS resolver cache (`ipconfig /flushdns` on Windows, `dscacheutil -flushcache` on macOS) so new mappings take effect immediately.
 
 ## Version History
 
 * **First Stable Version Supported**: `v1.6.0`
-* **Latest Stable Version Update**: `v1.6.0`
+* **Latest Stable Version Update**: `v1.11.4`
 
+- **v1.11.4**: Added Windows support (`%SystemRoot%\System32\drivers\etc\hosts` with Administrator UAC elevation), automatic DNS cache flushing (`ipconfig /flushdns`), and interactive scrollable viewport for search results starting from the top.
 - **v1.6.0**: Added interactive search, view, addition, deletion, and formatting/sorting of the `/etc/hosts` file.

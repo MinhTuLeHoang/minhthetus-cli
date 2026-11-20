@@ -6,12 +6,34 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
 	"github.com/MinhTuLeHoang/minhthetus-cli/internal/ui"
 	"github.com/spf13/cobra"
 )
+
+// getHostsFilePath returns the absolute path to the system hosts file depending on the OS
+func getHostsFilePath() string {
+	if runtime.GOOS == "windows" {
+		systemRoot := os.Getenv("SystemRoot")
+		if systemRoot == "" {
+			systemRoot = `C:\Windows`
+		}
+		return filepath.Join(systemRoot, "System32", "drivers", "etc", "hosts")
+	}
+	return "/etc/hosts"
+}
+
+// privilegeMessage returns an OS-appropriate message regarding required permissions
+func privilegeMessage() string {
+	if runtime.GOOS == "windows" {
+		return "Administrator privileges required. A UAC elevation prompt may appear to apply changes."
+	}
+	return "Sudo privileges required. Please authenticate using your password or biometrics to continue."
+}
 
 // HostEntry represents a single domain-IP mapping
 type HostEntry struct {
@@ -25,10 +47,10 @@ type HostEntry struct {
 // HostCmd represents the sys host command
 var HostCmd = &cobra.Command{
 	Use:   "host",
-	Short: "Manage the system host file (/etc/hosts)",
+	Short: "Manage the system host file",
 	Long: `Provides search, list, add, delete, and formatting/sorting operations
-on the system host file (/etc/hosts). Formatting and writing back changes 
-requires superuser (sudo) privileges.`,
+on the system host file. Formatting and writing back changes 
+requires elevated (sudo or Administrator) privileges.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runHostCLI()
 	},
@@ -85,20 +107,21 @@ func runHostCLI() {
 				fmt.Println(ui.ErrorMessage(fmt.Sprintf("Format failed: %v", err)))
 				return
 			}
-			fmt.Println("\n" + ui.BoldStyle.Render("Formatted /etc/hosts contents:") + "\n")
-			catCmd := exec.Command("cat", "/etc/hosts")
-			catCmd.Stdout = os.Stdout
-			catCmd.Stderr = os.Stderr
-			_ = catCmd.Run()
+			hostsPath := getHostsFilePath()
+			fmt.Println("\n" + ui.BoldStyle.Render(fmt.Sprintf("Formatted %s contents:", hostsPath)) + "\n")
+			data, err := os.ReadFile(hostsPath)
+			if err == nil {
+				fmt.Print(string(data))
+			}
 			return
 		}
 		fmt.Println()
 	}
 }
 
-// parseHostsFile reads /etc/hosts, extracts header comments, and parses domain-IP pairs
+// parseHostsFile reads the system hosts file, extracts header comments, and parses domain-IP pairs
 func parseHostsFile() ([]string, []HostEntry, error) {
-	file, err := os.Open("/etc/hosts")
+	file, err := os.Open(getHostsFilePath())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -325,16 +348,34 @@ func searchEntries(entries []HostEntry) error {
 		return nil
 	}
 
+	var sb strings.Builder
+	sb.WriteString(ui.BoldStyle.Render("Exact Matches:") + "\n")
+	for _, entry := range exactMatches {
+		sb.WriteString(fmt.Sprintf("  %s\n", formatLine(entry.IP, entry.Domain)))
+	}
+
+	if len(relevantEntries) > 0 {
+		sb.WriteString("\n" + ui.BoldStyle.Render("Relevant Results (same IP or normalized domain):") + "\n")
+		for _, entry := range relevantEntries {
+			sb.WriteString(fmt.Sprintf("  %s\n", formatLine(entry.IP, entry.Domain)))
+		}
+	}
+
+	// If there are relevant results or many matches, display in an interactive scroll view starting at the top
+	if len(relevantEntries) > 0 || len(exactMatches) > 10 {
+		title := fmt.Sprintf("Search Results for %q (%d exact, %d relevant)", query, len(exactMatches), len(relevantEntries))
+		if err := ui.ScrollView(title, sb.String()); err != nil {
+			fmt.Println(ui.ErrorMessage(fmt.Sprintf("Viewer error: %v", err)))
+		}
+	}
+
+	// Print Exact Matches to terminal history so user retains key results upon exit
 	fmt.Println("\n" + ui.BoldStyle.Render("Exact Matches:"))
 	for _, entry := range exactMatches {
 		fmt.Printf("  %s\n", formatLine(entry.IP, entry.Domain))
 	}
-
 	if len(relevantEntries) > 0 {
-		fmt.Println("\n" + ui.BoldStyle.Render("Relevant Results (same IP or normalized domain):"))
-		for _, entry := range relevantEntries {
-			fmt.Printf("  %s\n", formatLine(entry.IP, entry.Domain))
-		}
+		fmt.Printf("\n  %s\n", ui.GrayStyle().Render(fmt.Sprintf("(%d relevant results were shown in scroll viewer)", len(relevantEntries))))
 	}
 	fmt.Println()
 	return nil
@@ -343,13 +384,32 @@ func searchEntries(entries []HostEntry) error {
 // showAllEntries lists all hosts, sorted cleanly according to spec
 func showAllEntries(entries []HostEntry) error {
 	if len(entries) == 0 {
-		fmt.Println(ui.InfoMessage("No entries found in hosts file."))
+		hostsPath := getHostsFilePath()
+		fmt.Println(ui.InfoMessage(fmt.Sprintf("No active host mappings found in %s.", hostsPath)))
+		if runtime.GOOS == "windows" {
+			fmt.Println(ui.GrayStyle().Render("  (By default on Windows, localhost entries are commented out with '#')"))
+		}
+		fmt.Println(ui.GrayStyle().Render("  Use 'Add Host' to add your first domain-IP mapping."))
 		return nil
 	}
 
 	sort.SliceStable(entries, func(i, j int) bool {
 		return compareHostEntries(entries[i], entries[j])
 	})
+
+	if len(entries) > 20 {
+		var sb strings.Builder
+		sb.WriteString(ui.BoldStyle.Render("Current Host Entries:") + "\n\n")
+		var prevIP string
+		for _, entry := range entries {
+			if prevIP != "" && entry.IP != prevIP {
+				sb.WriteString("\n")
+			}
+			sb.WriteString(fmt.Sprintf("  %s\n", formatLine(entry.IP, entry.Domain)))
+			prevIP = entry.IP
+		}
+		return ui.ScrollView(fmt.Sprintf("All Hosts (%d entries)", len(entries)), sb.String())
+	}
 
 	fmt.Println("\n" + ui.BoldStyle.Render("Current Host Entries:"))
 	var prevIP string
@@ -467,7 +527,7 @@ func addEntry(headerComments []string, entries []HostEntry) error {
 				sb.WriteString(fmt.Sprintf("  %-16s   %s\n", "", dom))
 			}
 		}
-		sb.WriteString("\n" + ui.InfoMessage("Sudo privileges required. Please authenticate using your password or biometrics to continue."))
+		sb.WriteString("\n" + ui.InfoMessage(privilegeMessage()))
 
 		err = writeHostsFile(headerComments, entries, sb.String())
 		if err != nil {
@@ -564,7 +624,7 @@ func deleteEntry(headerComments []string, entries []HostEntry) error {
 	sb.WriteString("  " + header + "\n")
 	sb.WriteString("  " + ui.GrayStyle().Render(strings.Repeat("-", 50)) + "\n")
 	sb.WriteString(fmt.Sprintf("  %-16s   %s\n", targetIP, targetDomain))
-	sb.WriteString("\n" + ui.InfoMessage("Sudo privileges required. Please authenticate using your password or biometrics to continue."))
+	sb.WriteString("\n" + ui.InfoMessage(privilegeMessage()))
 
 	err = writeHostsFile(headerComments, newEntries, sb.String())
 	if err != nil {
@@ -575,14 +635,14 @@ func deleteEntry(headerComments []string, entries []HostEntry) error {
 	return nil
 }
 
-// formatHostsFile sorts and reformats /etc/hosts
+// formatHostsFile sorts and reformats the hosts file
 func formatHostsFile(headerComments []string, entries []HostEntry) error {
 	sort.SliceStable(entries, func(i, j int) bool {
 		return compareHostEntries(entries[i], entries[j])
 	})
 
 	preview := ui.BoldStyle.Render("Preparing to format and sort hosts file.") +
-		"\n\n" + ui.InfoMessage("Sudo privileges required. Please authenticate using your password or biometrics to continue.")
+		"\n\n" + ui.InfoMessage(privilegeMessage())
 
 	err := writeHostsFile(headerComments, entries, preview)
 	if err != nil {
@@ -593,7 +653,39 @@ func formatHostsFile(headerComments []string, entries []HostEntry) error {
 	return nil
 }
 
-// writeHostsFile generates hosts output structure, writes to temp file, and copies via sudo cp
+// copyFile copies the contents from src to dst. On Windows, it clears any read-only attribute first.
+func copyFile(src, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	if runtime.GOOS == "windows" {
+		_ = os.Chmod(dst, 0666)
+	}
+	return os.WriteFile(dst, data, 0644)
+}
+
+// flushDNS flushes the system DNS cache so hosts file changes take effect immediately
+func flushDNS() {
+	switch runtime.GOOS {
+	case "windows":
+		cmd := exec.Command("ipconfig", "/flushdns")
+		if err := cmd.Run(); err == nil {
+			fmt.Println(ui.SuccessMessage("Flushed DNS resolver cache (ipconfig /flushdns)."))
+		}
+	case "darwin":
+		_ = exec.Command("dscacheutil", "-flushcache").Run()
+		_ = exec.Command("sudo", "killall", "-HUP", "mDNSResponder").Run()
+		fmt.Println(ui.SuccessMessage("Flushed macOS DNS cache."))
+	case "linux":
+		if err := exec.Command("resolvectl", "flush-caches").Run(); err != nil {
+			_ = exec.Command("systemd-resolve", "--flush-caches").Run()
+		}
+		fmt.Println(ui.SuccessMessage("Flushed Linux DNS cache."))
+	}
+}
+
+// writeHostsFile generates hosts output structure, writes to temp file, and overwrites the hosts file with elevated privileges
 func writeHostsFile(headerComments []string, entries []HostEntry, previewMsg string) error {
 	sort.SliceStable(entries, func(i, j int) bool {
 		return compareHostEntries(entries[i], entries[j])
@@ -632,14 +724,40 @@ func writeHostsFile(headerComments []string, entries []HostEntry, previewMsg str
 		fmt.Println()
 	}
 
-	cmd := exec.Command("sudo", "cp", tempPath, "/etc/hosts")
+	hostsPath := getHostsFilePath()
+
+	if runtime.GOOS == "windows" {
+		// Attempt direct write/copy first (works if current prompt is already Administrator)
+		if err := copyFile(tempPath, hostsPath); err != nil {
+			// Otherwise, trigger UAC elevation prompt via PowerShell Start-Process
+			psArgs := fmt.Sprintf(
+				`$p = Start-Process cmd -ArgumentList @('/c', 'copy', '/y', '%s', '%s') -Verb RunAs -Wait -PassThru; exit $p.ExitCode`,
+				strings.ReplaceAll(tempPath, "'", "''"),
+				strings.ReplaceAll(hostsPath, "'", "''"),
+			)
+			cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", psArgs)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			cmd.Stdin = os.Stdin
+
+			if err := cmd.Run(); err != nil {
+				return fmt.Errorf("failed to overwrite %s (requires Administrator privileges): %w", hostsPath, err)
+			}
+		}
+
+		flushDNS()
+		return nil
+	}
+
+	cmd := exec.Command("sudo", "cp", tempPath, hostsPath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to overwrite /etc/hosts (requires sudo): %w", err)
+		return fmt.Errorf("failed to overwrite %s (requires sudo): %w", hostsPath, err)
 	}
 
+	flushDNS()
 	return nil
 }
