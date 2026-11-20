@@ -33,6 +33,8 @@ var (
 	SwitchIcon    = "🔄"
 	CleanIcon     = "🧹"
 	PointerIcon   = "👉"
+	LockIcon      = "🔒"
+	ShieldIcon    = "🛡️"
 )
 
 // SuccessMessage returns a formatted success message

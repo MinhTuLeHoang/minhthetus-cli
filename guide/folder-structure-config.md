@@ -59,6 +59,12 @@ This hidden directory is automatically created in your home folder when you firs
   - The CLI normally runs in a subshell, meaning it cannot change the environment of your primary terminal (like changing directories or switching Node versions).
   - This wrapper captures specific shell commands emitted by the CLI into a temporary file and "sources" them in your current session.
 
+### 4. `backups/pam/`
+- **File Type**: `Directory` (`0700`) containing PAM backup files (`*.bak`, `0600`) and Windows revert state (`windows-fingerprint-state.json`, `0600`)
+- **Purpose**: Stores pre-modification backups outside `/etc/pam.d/` (and prior Windows UAC/service/sudo state) so `sys setup finger-print --disable` can safely revert changes without leaving `.bak` files inside `/etc/pam.d/`.
+- **Supported CLI**: `minhthetus-cli sys setup finger-print`
+- **Security**: Contains NO user passwords or authentication secrets.
+
 ---
 
 ## Shell Completion Profiles (Managed Outside `~/.minhthetus-cli/`)
@@ -79,6 +85,7 @@ Rather than generating static `completion.zsh`/`completion.bash` files inside `~
 - **Creation**: The directory, config files, and shell integrations are managed by the Go implementation:
   - **cmd/setup_completion.go**, **cmd/completion_windows.go**, **cmd/completion_other.go**: Manage fast cross-platform shell detection, `--shell` overrides, and RC/profile completion hooks.
   - **cmd/uninstall.go**: Performs block-aware cleanup of shell completion hooks and binary removal.
+  - **cmd/sys/setup_fingerprint_pam.go**: Manages `~/.minhthetus-cli/backups/pam/` external PAM backups and Windows revert state.
   - **internal/config/**: Manages `~/.minhthetus-cli/` JSON configuration files.
   - **internal/git/**: Handles Git account and repository tracking logic.
 - **Permissions**: Configuration files are stored with restricted permissions to protect sensitive information.

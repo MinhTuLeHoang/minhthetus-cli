@@ -17,4 +17,5 @@ func init() {
 	Cmd.AddCommand(SizeCmd)
 	Cmd.AddCommand(CleanMyMacCmd)
 	Cmd.AddCommand(HostCmd)
+	Cmd.AddCommand(SetupCmd)
 }

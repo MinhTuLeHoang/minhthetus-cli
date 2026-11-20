@@ -1,6 +1,6 @@
 # Welcome to the minhthetus-cli Wiki!
 
-![Version](https://img.shields.io/badge/version-v1.12.0-green) ![Language](https://img.shields.io/badge/language-Go-00ADD8.svg?style=flat&logo=go) ![License](https://img.shields.io/badge/license-MIT-blue)
+![Version](https://img.shields.io/badge/version-v1.15.0-green) ![Language](https://img.shields.io/badge/language-Go-00ADD8.svg?style=flat&logo=go) ![License](https://img.shields.io/badge/license-MIT-blue)
 
 A professional, high-performance CLI tool designed for automation and developer productivity, written natively in Go.
 
@@ -38,6 +38,7 @@ Use the sidebar on the right or the links below to explore specific features:
 *   [[Sys-Size]]: Lists the size of all files and folders in the current directory, sorted by size descending.
 *   [[Sys-Clean-My-Mac]]: Cleans up macOS caches, logs, and temp files using mac-cleaner-cli.
 *   [[Sys-Host]]: Interactive search, view, addition, deletion, and formatting/sorting of the /etc/hosts file.
+*   [[Sys-Setup-Finger-Print]]: Configure biometric-first terminal authentication (Touch ID, fprintd, Windows Hello/UAC) with traditional fallback.
 
 ---
 
@@ -47,5 +48,4 @@ To learn how to install, update, and configure the CLI on your machine:
 *   For installation instructions, see the repository [README](https://github.com/MinhTuLeHoang/minhthetus-cli#readme).
 *   For instructions on updating an existing installation, see [[Updating-the-CLI]].
 *   For version and installation disk footprint, see [[Version]].
-*   For shell completions (PowerShell, Git Bash, Bash, Zsh, Fish), see [[Setup-Completion]].
-*   For uninstalling the CLI and cleaning up shell profiles, see [[Uninstall]].
+*   For shell completions, execute `minhthetus-cli setup-completion`.

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-11-20
+
+### Added
+- Added sys setup finger-print command for biometric-first terminal elevation with traditional password/PIN fallback and zero password storage
+- Added cross-platform fingerprint authentication backends for macOS (pam_tid.so / sudo_local / pam_reattach.so), Linux (pam_fprintd.so / fprintd), and Windows (WinBio / WbioSrvc / Windows 11 sudo.exe / UAC)
+
 ## [1.12.0] - 2026-11-20
 
 ### Added
