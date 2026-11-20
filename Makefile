@@ -1,6 +1,10 @@
 .PHONY: build build-dev install setup-completion publish help
 
+ifeq ($(OS),Windows_NT)
+BINARY_NAME=minhthetus-cli.exe
+else
 BINARY_NAME=minhthetus-cli
+endif
 
 help:
 	@echo "Usage: make [target]"

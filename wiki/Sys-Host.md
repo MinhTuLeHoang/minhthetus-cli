@@ -1,6 +1,6 @@
 # Sys Host Command
 
-The `sys host` command enables interactive search, view, addition, deletion, and formatting/sorting of the system host file (`/etc/hosts`).
+The `sys host` command enables interactive search, view, addition, deletion, and formatting/sorting of the system host file (`/etc/hosts` on macOS/Linux or `C:\Windows\System32\drivers\etc\hosts` on Windows).
 
 ## Usage
 
@@ -35,7 +35,7 @@ When formatting or writing back changes, the file is standardized using these st
 *   **Spacing**: Different IP addresses are separated by a single blank line.
 
 > [!IMPORTANT]
-> Writing changes to `/etc/hosts` requires superuser (`sudo`) privileges. The tool writes the formatted content to a temporary file first and then executes `sudo cp` to overwrite the hosts file, prompting you for your macOS password if necessary.
+> Writing changes to the hosts file requires elevated privileges (`sudo` on macOS/Linux or Administrator on Windows). The tool writes the formatted content to a temporary file first and then overwrites the hosts file using elevated privileges (prompting for `sudo` on Unix or UAC prompt on Windows if not already elevated).
 
 ## Version History
 
