@@ -35,12 +35,12 @@ When formatting or writing back changes, the file is standardized using these st
 *   **Spacing**: Different IP addresses are separated by a single blank line.
 
 > [!IMPORTANT]
-> Writing changes to the hosts file requires elevated privileges (`sudo` on macOS/Linux or Administrator on Windows). The tool writes the formatted content to a temporary file first and then overwrites the hosts file using elevated privileges (prompting for `sudo` on Unix or UAC prompt on Windows if not already elevated).
+> Writing changes to the hosts file requires elevated privileges (`sudo` on macOS/Linux or Administrator on Windows). The tool writes the formatted content to a temporary file first and then overwrites the hosts file using elevated privileges (prompting for `sudo` on Unix or UAC prompt on Windows if not already elevated). After writing changes, the CLI automatically flushes the local DNS resolver cache (`ipconfig /flushdns` on Windows, `dscacheutil -flushcache` on macOS) so new mappings take effect immediately.
 
 ## Version History
 
 * **First Stable Version Supported**: `v1.6.0`
 * **Latest Stable Version Update**: `v1.11.4`
 
-- **v1.11.4**: Added Windows support (`%SystemRoot%\System32\drivers\etc\hosts` with Administrator UAC elevation) and interactive scrollable viewport for search results starting from the top.
+- **v1.11.4**: Added Windows support (`%SystemRoot%\System32\drivers\etc\hosts` with Administrator UAC elevation), automatic DNS cache flushing (`ipconfig /flushdns`), and interactive scrollable viewport for search results starting from the top.
 - **v1.6.0**: Added interactive search, view, addition, deletion, and formatting/sorting of the `/etc/hosts` file.

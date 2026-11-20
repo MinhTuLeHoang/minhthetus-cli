@@ -665,6 +665,26 @@ func copyFile(src, dst string) error {
 	return os.WriteFile(dst, data, 0644)
 }
 
+// flushDNS flushes the system DNS cache so hosts file changes take effect immediately
+func flushDNS() {
+	switch runtime.GOOS {
+	case "windows":
+		cmd := exec.Command("ipconfig", "/flushdns")
+		if err := cmd.Run(); err == nil {
+			fmt.Println(ui.SuccessMessage("Flushed DNS resolver cache (ipconfig /flushdns)."))
+		}
+	case "darwin":
+		_ = exec.Command("dscacheutil", "-flushcache").Run()
+		_ = exec.Command("sudo", "killall", "-HUP", "mDNSResponder").Run()
+		fmt.Println(ui.SuccessMessage("Flushed macOS DNS cache."))
+	case "linux":
+		if err := exec.Command("resolvectl", "flush-caches").Run(); err != nil {
+			_ = exec.Command("systemd-resolve", "--flush-caches").Run()
+		}
+		fmt.Println(ui.SuccessMessage("Flushed Linux DNS cache."))
+	}
+}
+
 // writeHostsFile generates hosts output structure, writes to temp file, and overwrites the hosts file with elevated privileges
 func writeHostsFile(headerComments []string, entries []HostEntry, previewMsg string) error {
 	sort.SliceStable(entries, func(i, j int) bool {
@@ -708,24 +728,24 @@ func writeHostsFile(headerComments []string, entries []HostEntry, previewMsg str
 
 	if runtime.GOOS == "windows" {
 		// Attempt direct write/copy first (works if current prompt is already Administrator)
-		if err := copyFile(tempPath, hostsPath); err == nil {
-			return nil
+		if err := copyFile(tempPath, hostsPath); err != nil {
+			// Otherwise, trigger UAC elevation prompt via PowerShell Start-Process
+			psArgs := fmt.Sprintf(
+				`$p = Start-Process cmd -ArgumentList @('/c', 'copy', '/y', '%s', '%s') -Verb RunAs -Wait -PassThru; exit $p.ExitCode`,
+				strings.ReplaceAll(tempPath, "'", "''"),
+				strings.ReplaceAll(hostsPath, "'", "''"),
+			)
+			cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", psArgs)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			cmd.Stdin = os.Stdin
+
+			if err := cmd.Run(); err != nil {
+				return fmt.Errorf("failed to overwrite %s (requires Administrator privileges): %w", hostsPath, err)
+			}
 		}
 
-		// Otherwise, trigger UAC elevation prompt via PowerShell Start-Process
-		psArgs := fmt.Sprintf(
-			`$p = Start-Process cmd -ArgumentList @('/c', 'copy', '/y', '%s', '%s') -Verb RunAs -Wait -PassThru; exit $p.ExitCode`,
-			strings.ReplaceAll(tempPath, "'", "''"),
-			strings.ReplaceAll(hostsPath, "'", "''"),
-		)
-		cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", psArgs)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Stdin = os.Stdin
-
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to overwrite %s (requires Administrator privileges): %w", hostsPath, err)
-		}
+		flushDNS()
 		return nil
 	}
 
@@ -738,5 +758,6 @@ func writeHostsFile(headerComments []string, entries []HostEntry, previewMsg str
 		return fmt.Errorf("failed to overwrite %s (requires sudo): %w", hostsPath, err)
 	}
 
+	flushDNS()
 	return nil
 }
