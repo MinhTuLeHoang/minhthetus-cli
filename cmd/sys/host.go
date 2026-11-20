@@ -348,16 +348,34 @@ func searchEntries(entries []HostEntry) error {
 		return nil
 	}
 
+	var sb strings.Builder
+	sb.WriteString(ui.BoldStyle.Render("Exact Matches:") + "\n")
+	for _, entry := range exactMatches {
+		sb.WriteString(fmt.Sprintf("  %s\n", formatLine(entry.IP, entry.Domain)))
+	}
+
+	if len(relevantEntries) > 0 {
+		sb.WriteString("\n" + ui.BoldStyle.Render("Relevant Results (same IP or normalized domain):") + "\n")
+		for _, entry := range relevantEntries {
+			sb.WriteString(fmt.Sprintf("  %s\n", formatLine(entry.IP, entry.Domain)))
+		}
+	}
+
+	// If there are relevant results or many matches, display in an interactive scroll view starting at the top
+	if len(relevantEntries) > 0 || len(exactMatches) > 10 {
+		title := fmt.Sprintf("Search Results for %q (%d exact, %d relevant)", query, len(exactMatches), len(relevantEntries))
+		if err := ui.ScrollView(title, sb.String()); err != nil {
+			fmt.Println(ui.ErrorMessage(fmt.Sprintf("Viewer error: %v", err)))
+		}
+	}
+
+	// Print Exact Matches to terminal history so user retains key results upon exit
 	fmt.Println("\n" + ui.BoldStyle.Render("Exact Matches:"))
 	for _, entry := range exactMatches {
 		fmt.Printf("  %s\n", formatLine(entry.IP, entry.Domain))
 	}
-
 	if len(relevantEntries) > 0 {
-		fmt.Println("\n" + ui.BoldStyle.Render("Relevant Results (same IP or normalized domain):"))
-		for _, entry := range relevantEntries {
-			fmt.Printf("  %s\n", formatLine(entry.IP, entry.Domain))
-		}
+		fmt.Printf("\n  %s\n", ui.GrayStyle().Render(fmt.Sprintf("(%d relevant results were shown in scroll viewer)", len(relevantEntries))))
 	}
 	fmt.Println()
 	return nil
@@ -373,6 +391,20 @@ func showAllEntries(entries []HostEntry) error {
 	sort.SliceStable(entries, func(i, j int) bool {
 		return compareHostEntries(entries[i], entries[j])
 	})
+
+	if len(entries) > 20 {
+		var sb strings.Builder
+		sb.WriteString(ui.BoldStyle.Render("Current Host Entries:") + "\n\n")
+		var prevIP string
+		for _, entry := range entries {
+			if prevIP != "" && entry.IP != prevIP {
+				sb.WriteString("\n")
+			}
+			sb.WriteString(fmt.Sprintf("  %s\n", formatLine(entry.IP, entry.Domain)))
+			prevIP = entry.IP
+		}
+		return ui.ScrollView(fmt.Sprintf("All Hosts (%d entries)", len(entries)), sb.String())
+	}
 
 	fmt.Println("\n" + ui.BoldStyle.Render("Current Host Entries:"))
 	var prevIP string

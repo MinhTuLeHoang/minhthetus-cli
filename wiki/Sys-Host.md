@@ -12,8 +12,8 @@ minhthetus-cli sys host
 
 When you run the command, it opens an interactive menu using Bubble Tea with the following actions:
 
-1. **Search Hosts**: Query `/etc/hosts` for domains or IPs. It displays exact matches along with relevant results (e.g. sharing the same IP or the same normalized domain).
-2. **Show All Hosts**: Lists all parsed host entries cleanly, sorted according to the formatting rules.
+1. **Search Hosts**: Query hosts file for domains or IPs. It displays exact matches along with relevant results (e.g. sharing the same IP or the same normalized domain). When relevant results or matches are long, an interactive scrollable viewer opens starting at the top so exact matches are never pushed out of view.
+2. **Show All Hosts**: Lists all parsed host entries cleanly, sorted according to the formatting rules (using the scroll viewer if list is long).
 3. **Add Host**: Interactively add a new IP-domain mapping. If you enter only one of the values, the CLI will prompt you for the missing piece. It automatically validates against duplicates.
 4. **Delete Host**: Filters entries by query, prompts you to select an host, and requests confirmation before deleting it.
 5. **Format & Sort hosts file**: Standardizes the layout of the `/etc/hosts` file based on the formatting rules.
