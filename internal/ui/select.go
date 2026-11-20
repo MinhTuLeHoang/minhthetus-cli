@@ -140,6 +140,12 @@ func (m simpleChooseModel) View() string {
 // ChooseWithDefault displays a list of options and returns the selected one with a default selected cursor index.
 // It automatically switches to a compact inline layout for 7 or fewer options to avoid scrolling issues.
 func ChooseWithDefault(title string, options []string, defaultIndex int) (string, error) {
+	if len(options) == 0 {
+		return "", fmt.Errorf("no options provided")
+	}
+	if !isInteractiveTTY() {
+		return "", ErrNonInteractiveTTY
+	}
 	if defaultIndex < 0 || defaultIndex >= len(options) {
 		defaultIndex = 0
 	}

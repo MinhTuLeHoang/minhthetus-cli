@@ -1,6 +1,6 @@
 # Welcome to the minhthetus-cli Wiki!
 
-![Version](https://img.shields.io/badge/version-v1.12.0-green) ![Language](https://img.shields.io/badge/language-Go-00ADD8.svg?style=flat&logo=go) ![License](https://img.shields.io/badge/license-MIT-blue)
+![Version](https://img.shields.io/badge/version-v1.13.0-green) ![Language](https://img.shields.io/badge/language-Go-00ADD8.svg?style=flat&logo=go) ![License](https://img.shields.io/badge/license-MIT-blue)
 
 A professional, high-performance CLI tool designed for automation and developer productivity, written natively in Go.
 
@@ -20,7 +20,7 @@ Use the sidebar on the right or the links below to explore specific features:
 *   [[Git-Rebase-Master]]: Rebase current branch onto master and force push if successful, or abort on conflict.
 *   [[Git-Rename-Branch]]: Safely rename the current Git branch both locally and on the remote origin.
 *   [[Git-Sync-Branch]]: Keep local branches fully in sync with remote.
-*   [[Git-Tag-Dev-Stg]]: Manage deployment tags for dev and staging.
+*   [[Git-Tag-Dev-Stg]]: Manage dynamic deployment tags for sandbox, staging, and production.
 *   [[Git-Tree]]: Visualize commit graph or open project in SourceTree.
 
 ### Web Tools
@@ -47,5 +47,4 @@ To learn how to install, update, and configure the CLI on your machine:
 *   For installation instructions, see the repository [README](https://github.com/MinhTuLeHoang/minhthetus-cli#readme).
 *   For instructions on updating an existing installation, see [[Updating-the-CLI]].
 *   For version and installation disk footprint, see [[Version]].
-*   For shell completions (PowerShell, Git Bash, Bash, Zsh, Fish), see [[Setup-Completion]].
-*   For uninstalling the CLI and cleaning up shell profiles, see [[Uninstall]].
+*   For shell completions, execute `minhthetus-cli setup-completion`.
