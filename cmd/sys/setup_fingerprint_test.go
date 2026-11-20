@@ -699,19 +699,49 @@ func TestWindowsEnableLUAZeroAndLocalizedSCOutput(t *testing.T) {
 		t.Fatalf("expected EnableLUA=0 warning, got %v", st.Warnings)
 	}
 
-	// Localized German/Spanish sc.exe outputs (even with localized state names, relying on numeric codes)
-	deQuery := "SERVICE_NAME: WbioSrvc\n        TYP                : 20  WIN32_SHARE_PROCESS\n        ZUSTAND            : 4  WIRD_AUSGEFUEHRT\n"
-	deQC := "SERVICE_NAME: WbioSrvc\n        TYP                : 20  WIN32_SHARE_PROCESS\n        STARTART           : 3   MANUELL\n        FEHLERSTEUERUNG    : 1   NORMAL\n"
-	state, start := ParseSCServiceOutput(deQuery, deQC)
-	if state != "Running" || start != "Manual" {
-		t.Fatalf("expected localized Running/Manual, got state=%q start=%q", state, start)
+	// Localized German/Spanish/French sc.exe outputs (including real Win11 `sc.exe query` `30  WIN32`
+	// and `sc.exe qc` `20  WIN32_SHARE_PROCESS` / `30  WIN32`, relying on numeric codes)
+	scCases := []struct {
+		name      string
+		queryOut  string
+		qcOut     string
+		wantState string
+		wantStart string
+	}{
+		{
+			name:      "DE_WIN32_SHARE_PROCESS_4_3",
+			queryOut:  "SERVICE_NAME: WbioSrvc\n        TYP                : 20  WIN32_SHARE_PROCESS\n        ZUSTAND            : 4  WIRD_AUSGEFUEHRT\n",
+			qcOut:     "SERVICE_NAME: WbioSrvc\n        TYP                : 20  WIN32_SHARE_PROCESS\n        STARTART           : 3   MANUELL\n        FEHLERSTEUERUNG    : 1   NORMAL\n",
+			wantState: "Running",
+			wantStart: "Manual",
+		},
+		{
+			name:      "DE_REAL_WIN11_30_WIN32_4_3",
+			queryOut:  "SERVICE_NAME: WbioSrvc \n        TYP                : 30  WIN32  \n        ZUSTAND            : 4  WIRD_AUSGEFUEHRT \n                                (STOPPABLE, NOT_PAUSABLE, ACCEPTS_PRESHUTDOWN)\n",
+			qcOut:     "SERVICE_NAME: WbioSrvc\n        TYP                : 20  WIN32_SHARE_PROCESS \n        STARTART           : 3   MANUELL\n        FEHLERSTEUERUNG    : 1   NORMAL\n",
+			wantState: "Running",
+			wantStart: "Manual",
+		},
+		{
+			name:      "ES_REAL_WIN11_30_WIN32_1_4",
+			queryOut:  "SERVICE_NAME: WbioSrvc\n        TIPO               : 30  WIN32\n        ESTADO             : 1  DETENIDO\n",
+			qcOut:     "SERVICE_NAME: WbioSrvc\n        TIPO               : 20  WIN32_SHARE_PROCESS\n        TIPO_INICIO        : 4  DESHABILITADO\n        CONTROL_ERROR      : 1  NORMAL\n",
+			wantState: "Stopped",
+			wantStart: "Disabled",
+		},
+		{
+			name:      "FR_REAL_WIN11_30_WIN32_7_2",
+			queryOut:  "SERVICE_NAME: WbioSrvc\n        GENRE              : 30  WIN32\n        ETAT               : 7  EN_PAUSE\n",
+			qcOut:     "SERVICE_NAME: WbioSrvc\n        GENRE              : 30  WIN32\n        TYPE_DEMARRAGE     : 2   DEMARRAGE_AUTOMATIQUE\n        CONTROLE_ERREUR    : 1   NORMAL\n",
+			wantState: "Paused",
+			wantStart: "Automatic",
+		},
 	}
-
-	stoppedQuery := "SERVICE_NAME: WbioSrvc\n        TYP                : 20  WIN32_SHARE_PROCESS\n        ESTADO             : 1  DETENIDO\n"
-	disabledQC := "SERVICE_NAME: WbioSrvc\n        TYP                : 20  WIN32_SHARE_PROCESS\n        TIPO_INICIO        : 4  DESHABILITADO\n        CONTROL_ERROR      : 1  NORMAL\n"
-	state2, start2 := ParseSCServiceOutput(stoppedQuery, disabledQC)
-	if state2 != "Stopped" || start2 != "Disabled" {
-		t.Fatalf("expected localized Stopped/Disabled, got state=%q start=%q", state2, start2)
+	for _, tc := range scCases {
+		state, start := ParseSCServiceOutput(tc.queryOut, tc.qcOut)
+		if state != tc.wantState || start != tc.wantStart {
+			t.Fatalf("%s: expected state=%q start=%q, got state=%q start=%q", tc.name, tc.wantState, tc.wantStart, state, start)
+		}
 	}
 
 	if ParseWindowsServiceStartDWORD(2) != "Automatic" || ParseWindowsServiceStartDWORD(3) != "Manual" || ParseWindowsServiceStartDWORD(4) != "Disabled" {

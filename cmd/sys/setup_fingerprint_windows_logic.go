@@ -185,7 +185,7 @@ func parseSCQueryState(queryOut string) string {
 		}
 		parts := strings.SplitN(upper, ":", 2)
 		val := strings.TrimSpace(parts[1])
-		if strings.Contains(val, "WIN32_") || strings.Contains(val, "KERNEL_") || strings.Contains(val, "DRIVER") {
+		if strings.Contains(val, "WIN32") || strings.Contains(val, "KERNEL") || strings.Contains(val, "DRIVER") {
 			afterType = true
 			continue
 		}
@@ -260,7 +260,7 @@ func parseSCStartType(qcOut string) string {
 		}
 		parts := strings.SplitN(upper, ":", 2)
 		val := strings.TrimSpace(parts[1])
-		if strings.Contains(val, "WIN32_") || strings.Contains(val, "KERNEL_") || strings.Contains(val, "DRIVER") {
+		if strings.Contains(val, "WIN32") || strings.Contains(val, "KERNEL") || strings.Contains(val, "DRIVER") {
 			afterType = true
 			continue
 		}
