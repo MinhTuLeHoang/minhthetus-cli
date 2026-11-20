@@ -82,3 +82,26 @@ func TestMultiChooseModel_UpdateGuardsEmptyOptionsAndOutOfRangeCursor(t *testing
 		t.Fatalf("expected option 0 to be toggled")
 	}
 }
+
+func TestMultiChooseModel_ViewGuardsShorterSelectedSlice(t *testing.T) {
+	m := multiChooseModel{
+		title:    "ShortSelected",
+		options:  []string{"one", "two", "three"},
+		selected: []bool{true},
+		cursor:   1,
+	}
+	out := m.View()
+	if out == "" {
+		t.Fatalf("expected non-empty View output")
+	}
+
+	mNil := multiChooseModel{
+		title:    "NilSelected",
+		options:  []string{"one", "two"},
+		selected: nil,
+		cursor:   0,
+	}
+	if outNil := mNil.View(); outNil == "" {
+		t.Fatalf("expected non-empty View output for nil selected slice")
+	}
+}

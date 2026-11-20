@@ -2,9 +2,12 @@ package sys
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -23,17 +26,33 @@ func TestValidateAliasNameAndCommand(t *testing.T) {
 		}
 	}
 
-	invalidNames := []string{"", "   ", "1abc", "-flag", "foo bar", "foo;rm", "a$b", "minhthetus-cli", "Minhthetus-CLI"}
+	invalidNames := []string{
+		"", "   ", "1abc", "-flag", "foo bar", "foo;rm", "a$b", "minhthetus-cli", "Minhthetus-CLI",
+		"if", "IF", "for", "For", "foreach", "while", "switch", "exit", "return", "function", "in", "case", "esac", "fi", "done", "coproc",
+	}
 	for _, n := range invalidNames {
 		if err := validateAliasName(n); err == nil {
 			t.Errorf("expected invalid name %q to fail validation", n)
 		}
 	}
 
-	if err := validateAliasCommand("git status -sb"); err != nil {
-		t.Errorf("expected valid command, got: %v", err)
+	validCommands := []string{
+		"git status -sb",
+		`cd "C:\Users\Admin\projects\" && dir`,
+		`echo "a && b" && echo ok`,
+		"git status # check status",
 	}
-	for _, c := range []string{"", "   ", "echo hi\necho bye", "echo hi\recho bye"} {
+	for _, c := range validCommands {
+		if err := validateAliasCommand(c); err != nil {
+			t.Errorf("expected valid command %q, got: %v", c, err)
+		}
+	}
+	invalidCommands := []string{
+		"", "   ", "echo hi\necho bye", "echo hi\recho bye",
+		"git status &&", "git status ||", "&& git status", "|| git status",
+		"git status && || echo hi", `cd "C:\Users\Admin\" &&`,
+	}
+	for _, c := range invalidCommands {
 		if err := validateAliasCommand(c); err == nil {
 			t.Errorf("expected invalid command %q to fail validation", c)
 		}
@@ -193,14 +212,14 @@ func TestRenderBashAndPowerShellBlocks(t *testing.T) {
 		}
 	}
 	if !strings.Contains(psBlock, "Remove-Item Alias:c -Force -ErrorAction SilentlyContinue") ||
-		!strings.Contains(psBlock, "function c { Clear-Host }") {
-		t.Fatalf("PowerShell block missing c -> Clear-Host:\n%s", psBlock)
+		!strings.Contains(psBlock, "function c {\n    Clear-Host\n}") {
+		t.Fatalf("PowerShell block missing multi-line c -> Clear-Host:\n%s", psBlock)
 	}
-	if !strings.Contains(psBlock, "function pull { git pull origin @args }") {
-		t.Fatalf("PowerShell block missing pull function:\n%s", psBlock)
+	if !strings.Contains(psBlock, "function pull {\n    git pull origin @args\n}") {
+		t.Fatalf("PowerShell block missing multi-line pull function:\n%s", psBlock)
 	}
-	if !strings.Contains(psBlock, "if (-not $?) { return }") || !strings.Contains(psBlock, "if ($?) { return }") {
-		t.Fatalf("PowerShell block did not rewrite && / || for combo alias:\n%s", psBlock)
+	if !strings.Contains(psBlock, "if ($_ok) {") || !strings.Contains(psBlock, "if (-not $_ok) {") || !strings.Contains(psBlock, "$global:LASTEXITCODE = $null") {
+		t.Fatalf("PowerShell block did not rewrite && / || with $_ok state tracking:\n%s", psBlock)
 	}
 	if !strings.Contains(psBlock, "$LASTEXITCODE") || !strings.Contains(psBlock, "git symbolic-ref refs/remotes/origin/HEAD") {
 		t.Fatalf("PowerShell block missing PS 5.1-safe master function:\n%s", psBlock)
@@ -306,7 +325,7 @@ func TestSyncProfileFile_PreservesUTF8BOMAndSkipsMissingWhenEmpty(t *testing.T) 
 	if !strings.Contains(string(updated), "Write-Host 'hello'\r\n") {
 		t.Fatalf("expected existing content and CRLF preserved: %q", string(updated))
 	}
-	if !strings.Contains(string(updated), "function c { Clear-Host }") {
+	if !strings.Contains(string(updated), "function c {\r\n    Clear-Host\r\n}") {
 		t.Fatalf("expected PowerShell alias block appended: %q", string(updated))
 	}
 }
@@ -391,4 +410,377 @@ func containsString(slice []string, target string) bool {
 		}
 	}
 	return false
+}
+
+func TestRenderPowerShellBlock_CommentsQuotedBackslashesNestingAndTrailingOps(t *testing.T) {
+	aliases := []AliasEntry{
+		{Name: "cmt", Command: "git status # check status"},
+		{Name: "scmt", Command: "git status; # check status"},
+		{Name: "wbs", Command: `cd "C:\Users\Admin\projects\" && dir`},
+		{Name: "sub", Command: `(cd C:\Windows && dir)`},
+		{Name: "sb", Command: `& { echo a && echo b }`},
+		{Name: "trand", Command: "git status &&"},
+		{Name: "aov", Command: "cmd /c exit 1 && echo B || echo C"},
+		{Name: "redir", Command: `cmd /c "echo warn 1>&2 & exit 0" 2>$null && echo SHOULD_RUN`},
+	}
+
+	psBlock := RenderPowerShellBlock(aliases)
+
+	// 1. Inline # comment must be multi-line and never place @args after #.
+	if !strings.Contains(psBlock, "function cmt {\n    git status @args # check status\n}") {
+		t.Fatalf("expected multi-line cmt with @args before comment, got:\n%s", psBlock)
+	}
+	if !strings.Contains(psBlock, "function scmt {\n    git status; # check status\n}") {
+		t.Fatalf("expected multi-line scmt without @args after comment, got:\n%s", psBlock)
+	}
+
+	// 2. Windows double-quoted path ending in backslash must split && cleanly.
+	if !strings.Contains(psBlock, `cd "C:\Users\Admin\projects\"`) {
+		t.Fatalf("expected Windows path preserved, got:\n%s", psBlock)
+	}
+
+	// 3. No unquoted && or || anywhere in the rendered PowerShell block.
+	if hasUnquotedChainOpPS(psBlock) {
+		t.Fatalf("PowerShell block still contains unquoted && or ||:\n%s", psBlock)
+	}
+
+	// 4. Nested (cd C:\Windows && dir) and & { echo a && echo b } must preserve structure and rewrite inner &&.
+	if !strings.Contains(psBlock, "function sub {\n    $(\n") {
+		t.Fatalf("expected subshell chain rewritten inside $(...), got:\n%s", psBlock)
+	}
+	if !strings.Contains(psBlock, "function sb {\n    & {\n") {
+		t.Fatalf("expected scriptblock chain rewritten inside & {...}, got:\n%s", psBlock)
+	}
+}
+
+func TestRenderPowerShellBlock_PS51ASTAndRuntimeSemantics(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("PowerShell 5.1 probe only runs on Windows")
+	}
+	psExe, err := exec.LookPath("powershell.exe")
+	if err != nil {
+		t.Skip("powershell.exe not available")
+	}
+
+	aliases := []AliasEntry{
+		{Name: "master", Command: "preset", Kind: aliasKindPresetMaster},
+		{Name: "c", Command: "clear"},
+		{Name: "cmt", Command: "echo hi # inline comment"},
+		{Name: "scmt", Command: "echo ok; # semicolon comment"},
+		{Name: "wbs", Command: `cd "C:\Windows\" && echo WBS_OK`},
+		{Name: "sub", Command: `(echo SUB_A && echo SUB_B)`},
+		{Name: "sb", Command: `& { echo SB_A && echo SB_B }`},
+		{Name: "trand", Command: "echo TRAND_OK &&"},
+		{Name: "aov", Command: "cmd /c exit 1 && echo B || echo C"},
+		{Name: "redir", Command: `cmd /c "echo warn 1>&2 & exit 0" 2>$null && echo SHOULD_RUN`},
+	}
+
+	psBlock := RenderPowerShellBlock(aliases)
+	tmpDir := t.TempDir()
+	scriptPath := filepath.Join(tmpDir, "probe.ps1")
+	script := psBlock + "\n" + strings.Join([]string{
+		"$tokens = $null",
+		"$parseErrors = $null",
+		"$raw = Get-Content -LiteralPath $PSCommandPath -Raw",
+		"[void][System.Management.Automation.Language.Parser]::ParseInput($raw, [ref]$tokens, [ref]$parseErrors)",
+		"if ($parseErrors.Count -gt 0) { $parseErrors | ForEach-Object { Write-Error $_.Message }; exit 2 }",
+		"Write-Output ('CMT=' + (cmt world))",
+		"Write-Output ('SCMT=' + (scmt))",
+		"Write-Output ('WBS=' + ((wbs) -join ','))",
+		"Write-Output ('SUB=' + ((sub) -join ','))",
+		"Write-Output ('SB=' + ((sb) -join ','))",
+		"Write-Output ('TRAND=' + (trand))",
+		"Write-Output ('AOV=' + (aov))",
+		"Write-Output ('REDIR=' + (redir))",
+	}, "\n")
+	if err := os.WriteFile(scriptPath, []byte(script), 0644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	out, err := exec.Command(psExe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", scriptPath).CombinedOutput()
+	if err != nil {
+		t.Fatalf("PowerShell 5.1 execution failed (%v):\n%s\nScript:\n%s", err, string(out), psBlock)
+	}
+	text := string(out)
+	for _, want := range []string{
+		"CMT=hi world",
+		"SCMT=ok",
+		"WBS=WBS_OK",
+		"SUB=SUB_A,SUB_B",
+		"SB=SB_A,SB_B",
+		"TRAND=TRAND_OK",
+		"AOV=C",
+		"REDIR=SHOULD_RUN",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("expected %q in PowerShell 5.1 output, got:\n%s\nBlock:\n%s", want, text, psBlock)
+		}
+	}
+}
+
+func TestLoadAliasConfig_EmptyLegacyAndMalformedRecovery(t *testing.T) {
+	tmpHome := t.TempDir()
+	setAliasTestHome(t, tmpHome)
+
+	configDir := filepath.Join(tmpHome, ".minhthetus-cli")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+	cfgPath := filepath.Join(configDir, aliasConfigFile)
+
+	// Empty, whitespace-only, and legacy "[]" must all load cleanly as empty config.
+	for _, raw := range []string{"", "   \n\t ", "[]"} {
+		if err := os.WriteFile(cfgPath, []byte(raw), 0644); err != nil {
+			t.Fatalf("WriteFile failed: %v", err)
+		}
+		cfg, err := loadAliasConfig()
+		if err != nil {
+			t.Fatalf("loadAliasConfig(%q) failed: %v", raw, err)
+		}
+		if len(cfg.Aliases) != 0 || len(cfg.AppliedSuggestions) != 0 {
+			t.Fatalf("expected empty AliasConfig for %q, got %#v", raw, cfg)
+		}
+	}
+
+	// Malformed JSON must return *aliasConfigParseError including full path.
+	corruptContent := "{bad json"
+	if err := os.WriteFile(cfgPath, []byte(corruptContent), 0644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+	_, err := loadAliasConfig()
+	if err == nil {
+		t.Fatalf("expected parse error for malformed JSON")
+	}
+	var parseErr *aliasConfigParseError
+	if !errors.As(err, &parseErr) {
+		t.Fatalf("expected *aliasConfigParseError, got %T: %v", err, err)
+	}
+	if parseErr.Path != cfgPath || !strings.Contains(err.Error(), cfgPath) {
+		t.Fatalf("expected error to include full path %q, got %q", cfgPath, err.Error())
+	}
+
+	// Backup and reset must preserve malformed bytes in .bak and reset config to valid JSON.
+	bakPath, err := backupAndResetAliasConfig(parseErr.Path)
+	if err != nil {
+		t.Fatalf("backupAndResetAliasConfig failed: %v", err)
+	}
+	if bakPath != cfgPath+".bak" {
+		t.Fatalf("unexpected backup path %q", bakPath)
+	}
+	bakBytes, err := os.ReadFile(bakPath)
+	if err != nil || string(bakBytes) != corruptContent {
+		t.Fatalf("expected backup to preserve %q, got %q (err=%v)", corruptContent, string(bakBytes), err)
+	}
+	resetCfg, err := loadAliasConfig()
+	if err != nil {
+		t.Fatalf("loadAliasConfig after reset failed: %v", err)
+	}
+	if len(resetCfg.Aliases) != 0 || len(resetCfg.AppliedSuggestions) != 0 {
+		t.Fatalf("expected empty reset config, got %#v", resetCfg)
+	}
+}
+
+func TestFindAliasIndex_ExactMatchPrecedence(t *testing.T) {
+	aliases := []AliasEntry{
+		{Name: "GS", Command: "git status -s"},
+		{Name: "gs", Command: "git status"},
+	}
+	if idx := findAliasIndex(aliases, "gs"); idx != 1 {
+		t.Fatalf("expected exact match index 1 for 'gs', got %d", idx)
+	}
+	if idx := findAliasIndex(aliases, "GS"); idx != 0 {
+		t.Fatalf("expected exact match index 0 for 'GS', got %d", idx)
+	}
+	if idx := findAliasIndex(aliases, "Gs"); idx != 0 {
+		t.Fatalf("expected case-insensitive fallback index 0 for 'Gs', got %d", idx)
+	}
+}
+
+func TestPartialSyncAndSuggestionOrdering(t *testing.T) {
+	tmpHome := t.TempDir()
+	setAliasTestHome(t, tmpHome)
+
+	// 1. persistAndSyncWith: partial sync failure (len(targets) > 0 alongside err) must report changed=true.
+	cfg := AliasConfig{
+		Aliases:            []AliasEntry{{Name: "gs", Command: "git status"}},
+		AppliedSuggestions: []string{},
+	}
+	partialTargets, changed, err := persistAndSyncWith(cfg, func([]AliasEntry) ([]ProfileTarget, error) {
+		return []ProfileTarget{{Path: "/tmp/.bashrc", Shell: ShellKindBash}}, errors.New("corrupt .bash_profile")
+	})
+	if err == nil || !changed || len(partialTargets) != 1 {
+		t.Fatalf("expected changed=true and 1 partial target on partial failure, got targets=%#v changed=%v err=%v", partialTargets, changed, err)
+	}
+
+	// 2. persistSuggestionsWith: total sync failure (len(targets) == 0 alongside err) must NOT persist applied_suggestions.
+	nextCfg := AliasConfig{
+		Aliases:            []AliasEntry{{Name: "pull", Command: "git pull origin"}},
+		AppliedSuggestions: []string{"pull"},
+	}
+	targets, changed, err := persistSuggestionsWith(nextCfg, func([]AliasEntry) ([]ProfileTarget, error) {
+		return nil, errors.New("all profiles broken")
+	})
+	if err == nil || changed || len(targets) != 0 {
+		t.Fatalf("expected changed=false on total suggestion sync failure, got targets=%#v changed=%v err=%v", targets, changed, err)
+	}
+
+	reloaded, loadErr := loadAliasConfig()
+	if loadErr != nil {
+		t.Fatalf("loadAliasConfig failed: %v", loadErr)
+	}
+	if len(reloaded.AppliedSuggestions) != 0 {
+		t.Fatalf("expected applied_suggestions NOT persisted on total sync failure, got %#v", reloaded.AppliedSuggestions)
+	}
+
+	// Verify JSON on disk still has empty applied_suggestions.
+	cfgPath := filepath.Join(tmpHome, ".minhthetus-cli", aliasConfigFile)
+	raw, _ := os.ReadFile(cfgPath)
+	var diskCfg AliasConfig
+	if err := json.Unmarshal(raw, &diskCfg); err != nil {
+		t.Fatalf("Unmarshal failed: %v", err)
+	}
+	if len(diskCfg.AppliedSuggestions) != 0 {
+		t.Fatalf("expected disk applied_suggestions empty, got %#v", diskCfg.AppliedSuggestions)
+	}
+
+	// 3. Partial suggestion sync success (len(targets) > 0) saves applied_suggestions and returns changed=true.
+	targets, changed, err = persistSuggestionsWith(nextCfg, func([]AliasEntry) ([]ProfileTarget, error) {
+		return []ProfileTarget{{Path: "/tmp/.bashrc", Shell: ShellKindBash}}, errors.New("one profile failed")
+	})
+	if err == nil || !changed || len(targets) != 1 {
+		t.Fatalf("expected changed=true on partial suggestion sync, got targets=%#v changed=%v err=%v", targets, changed, err)
+	}
+}
+
+func TestSyncProfileFile_PreservesSymlink(t *testing.T) {
+	tmpDir := t.TempDir()
+	realDir := filepath.Join(tmpDir, "dotfiles")
+	if err := os.MkdirAll(realDir, 0755); err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+	realFile := filepath.Join(realDir, ".bashrc")
+	if err := os.WriteFile(realFile, []byte("export DOTFILES=1\n"), 0644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	if got := resolveProfileWritePath(realFile); got != realFile {
+		t.Fatalf("expected resolveProfileWritePath(%q) == %q for regular file, got %q", realFile, realFile, got)
+	}
+	missingFile := filepath.Join(tmpDir, "missing.bashrc")
+	if got := resolveProfileWritePath(missingFile); got != missingFile {
+		t.Fatalf("expected resolveProfileWritePath(%q) == %q for missing file, got %q", missingFile, missingFile, got)
+	}
+
+	linkPath := filepath.Join(tmpDir, ".bashrc")
+	if err := os.Symlink(realFile, linkPath); err != nil {
+		// On Windows without Developer Mode / Administrator privilege, os.Symlink returns ERROR_PRIVILEGE_NOT_HELD.
+		t.Skipf("os.Symlink unavailable in this environment: %v", err)
+	}
+
+	if got := resolveProfileWritePath(linkPath); got != realFile {
+		t.Fatalf("expected resolveProfileWritePath(%q) == %q, got %q", linkPath, realFile, got)
+	}
+
+	changed, err := syncProfileFile(ProfileTarget{Path: linkPath, Shell: ShellKindBash}, []AliasEntry{{Name: "c", Command: "clear"}})
+	if err != nil || !changed {
+		t.Fatalf("syncProfileFile on symlink failed: changed=%v err=%v", changed, err)
+	}
+
+	info, err := os.Lstat(linkPath)
+	if err != nil {
+		t.Fatalf("Lstat failed: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("expected %s to remain a symlink after syncProfileFile", linkPath)
+	}
+	content, err := os.ReadFile(realFile)
+	if err != nil || !strings.Contains(string(content), "alias c='clear'") {
+		t.Fatalf("expected symlink target updated, got %q (err=%v)", string(content), err)
+	}
+}
+
+func TestMasterPresetAndGitChain_PS51RealGitRepo(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("PowerShell 5.1 probe only runs on Windows")
+	}
+	psExe, err := exec.LookPath("powershell.exe")
+	if err != nil {
+		t.Skip("powershell.exe not available")
+	}
+	gitExe, err := exec.LookPath("git")
+	if err != nil {
+		t.Skip("git not available")
+	}
+
+	tmpDir := t.TempDir()
+	originDir := filepath.Join(tmpDir, "origin.git")
+	workDir := filepath.Join(tmpDir, "work")
+	seedDir := filepath.Join(tmpDir, "seed")
+
+	runGit := func(dir string, args ...string) string {
+		t.Helper()
+		cmd := exec.Command(gitExe, args...)
+		if dir != "" {
+			cmd.Dir = dir
+		}
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v (dir=%s) failed: %v\n%s", args, dir, err, string(out))
+		}
+		return strings.TrimSpace(string(out))
+	}
+
+	runGit("", "init", "--bare", originDir)
+	runGit("", "clone", originDir, seedDir)
+	runGit(seedDir, "config", "user.email", "test@example.com")
+	runGit(seedDir, "config", "user.name", "Test")
+	runGit(seedDir, "checkout", "-b", "main")
+	if err := os.WriteFile(filepath.Join(seedDir, "README.md"), []byte("v1\n"), 0644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+	runGit(seedDir, "add", ".")
+	runGit(seedDir, "commit", "-m", "init")
+	runGit(seedDir, "push", "-u", "origin", "main")
+	runGit(originDir, "symbolic-ref", "HEAD", "refs/heads/main")
+
+	runGit("", "clone", originDir, workDir)
+	runGit(workDir, "config", "user.email", "test@example.com")
+	runGit(workDir, "config", "user.name", "Test")
+	runGit(workDir, "checkout", "-b", "feat/x")
+
+	// Advance origin/main so master alias pulls v2.
+	if err := os.WriteFile(filepath.Join(seedDir, "README.md"), []byte("v2\n"), 0644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+	runGit(seedDir, "add", ".")
+	runGit(seedDir, "commit", "-m", "v2")
+	runGit(seedDir, "push", "origin", "main")
+
+	psBlock := RenderPowerShellBlock([]AliasEntry{
+		{Name: "master", Command: "preset", Kind: aliasKindPresetMaster},
+		{Name: "gchain", Command: "git checkout main 2>$null && echo CHAIN_RAN"},
+	})
+
+	scriptPath := filepath.Join(tmpDir, "git_probe.ps1")
+	script := psBlock + "\n" + strings.Join([]string{
+		"Set-Location -LiteralPath '" + strings.ReplaceAll(workDir, "'", "''") + "'",
+		"master",
+		"$branchAfter = (git branch --show-current).Trim()",
+		"$readme = (Get-Content -LiteralPath 'README.md' -Raw).Trim()",
+		"git checkout feat/x 2>$null",
+		"$gchainOut = (gchain)",
+		"Write-Output \"BRANCH=$branchAfter README=$readme GCHAIN=$gchainOut\"",
+	}, "\n")
+	if err := os.WriteFile(scriptPath, []byte(script), 0644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	out, err := exec.Command(psExe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", scriptPath).CombinedOutput()
+	if err != nil {
+		t.Fatalf("PowerShell 5.1 git probe failed (%v):\n%s", err, string(out))
+	}
+	text := string(out)
+	if !strings.Contains(text, "BRANCH=main") || !strings.Contains(text, "README=v2") || !strings.Contains(text, "CHAIN_RAN") {
+		t.Fatalf("unexpected PS 5.1 git probe output:\n%s", text)
+	}
 }

@@ -80,7 +80,7 @@ func (m multiChooseModel) View() string {
 		}
 
 		checkedStr := "[ ]"
-		if m.selected[i] {
+		if i < len(m.selected) && m.selected[i] {
 			checkedStr = "[x]"
 		}
 

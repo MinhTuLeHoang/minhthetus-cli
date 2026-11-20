@@ -218,32 +218,116 @@ type shellChainPart struct {
 	OpAfter string // "", "&&", or "||"
 }
 
-func splitShellChain(cmd string) []shellChainPart {
+type psDelimSpan struct {
+	ch    byte
+	start int
+}
+
+func isPSLineCommentStart(cmd string, idx int) bool {
+	if idx == 0 {
+		return true
+	}
+	switch cmd[idx-1] {
+	case ' ', '\t', '\r', '\n', ';', '|', '&', '(', '{', ')', '}', '<', '>':
+		return true
+	}
+	return false
+}
+
+// skipPSBlockComment advances from '<' of "<#" to the closing '>' of "#>" (or end of string).
+func skipPSBlockComment(cmd string, i int) int {
+	for j := i + 2; j+1 < len(cmd); j++ {
+		if cmd[j] == '#' && cmd[j+1] == '>' {
+			return j + 1
+		}
+	}
+	return len(cmd) - 1
+}
+
+// skipPSLineComment advances from '#' to the newline (or end of string).
+func skipPSLineComment(cmd string, i int) int {
+	for j := i + 1; j < len(cmd); j++ {
+		if cmd[j] == '\n' {
+			return j
+		}
+	}
+	return len(cmd) - 1
+}
+
+func splitPowerShellChain(cmd string, ignoreParenDepth bool) []shellChainPart {
 	var parts []shellChainPart
 	inSingle := false
 	inDouble := false
-	escaped := false
+	var delims []byte
 	start := 0
 
 	for i := 0; i < len(cmd); i++ {
 		ch := cmd[i]
-		if escaped {
-			escaped = false
+		if inSingle {
+			if ch == '\'' {
+				if i+1 < len(cmd) && cmd[i+1] == '\'' {
+					i++
+					continue
+				}
+				inSingle = false
+			}
 			continue
 		}
-		if ch == '\\' && !inSingle {
-			escaped = true
+		if inDouble {
+			if ch == '`' {
+				if i+1 < len(cmd) {
+					i++
+				}
+				continue
+			}
+			if ch == '"' {
+				if i+1 < len(cmd) && cmd[i+1] == '"' {
+					i++
+					continue
+				}
+				inDouble = false
+			}
 			continue
 		}
-		if ch == '\'' && !inDouble {
-			inSingle = !inSingle
+
+		// Outside quotes in PowerShell: backtick (`) is escape, backslash (\) is literal.
+		if ch == '`' {
+			if i+1 < len(cmd) {
+				i++
+			}
 			continue
 		}
-		if ch == '"' && !inSingle {
-			inDouble = !inDouble
+		if ch == '<' && i+1 < len(cmd) && cmd[i+1] == '#' {
+			i = skipPSBlockComment(cmd, i)
 			continue
 		}
-		if !inSingle && !inDouble && i+1 < len(cmd) {
+		if ch == '#' && isPSLineCommentStart(cmd, i) {
+			i = skipPSLineComment(cmd, i)
+			continue
+		}
+		if ch == '\'' {
+			inSingle = true
+			continue
+		}
+		if ch == '"' {
+			inDouble = true
+			continue
+		}
+		if !ignoreParenDepth {
+			if ch == '(' || ch == '{' {
+				delims = append(delims, ch)
+				continue
+			}
+			if ch == ')' && len(delims) > 0 && delims[len(delims)-1] == '(' {
+				delims = delims[:len(delims)-1]
+				continue
+			}
+			if ch == '}' && len(delims) > 0 && delims[len(delims)-1] == '{' {
+				delims = delims[:len(delims)-1]
+				continue
+			}
+		}
+		if (ignoreParenDepth || len(delims) == 0) && i+1 < len(cmd) {
 			two := cmd[i : i+2]
 			if two == "&&" || two == "||" {
 				seg := strings.TrimSpace(cmd[start:i])
@@ -255,43 +339,315 @@ func splitShellChain(cmd string) []shellChainPart {
 	}
 
 	tail := strings.TrimSpace(cmd[start:])
-	if tail != "" || len(parts) == 0 {
-		parts = append(parts, shellChainPart{Command: tail})
-	}
+	parts = append(parts, shellChainPart{Command: tail})
 	return parts
 }
 
-func hasUnquotedShellMeta(cmd string) bool {
+func validatePowerShellChainSyntax(cmd string) error {
+	parts := splitPowerShellChain(cmd, false)
+	if len(parts) <= 1 && parts[0].OpAfter == "" {
+		return nil
+	}
+	for _, p := range parts {
+		if strings.TrimSpace(p.Command) == "" {
+			return fmt.Errorf("alias command cannot start, end, or have empty segments around '&&' or '||'")
+		}
+	}
+	return nil
+}
+
+func hasUnquotedShellMetaPS(cmd string) bool {
 	inSingle := false
 	inDouble := false
-	escaped := false
 
 	for i := 0; i < len(cmd); i++ {
 		ch := cmd[i]
-		if escaped {
-			escaped = false
-			continue
-		}
-		if ch == '\\' && !inSingle {
-			escaped = true
-			continue
-		}
-		if ch == '\'' && !inDouble {
-			inSingle = !inSingle
-			continue
-		}
-		if ch == '"' && !inSingle {
-			inDouble = !inDouble
-			continue
-		}
-		if !inSingle && !inDouble {
-			switch ch {
-			case ';', '|', '&', '>', '<':
-				return true
+		if inSingle {
+			if ch == '\'' {
+				if i+1 < len(cmd) && cmd[i+1] == '\'' {
+					i++
+					continue
+				}
+				inSingle = false
 			}
+			continue
+		}
+		if inDouble {
+			if ch == '`' {
+				if i+1 < len(cmd) {
+					i++
+				}
+				continue
+			}
+			if ch == '"' {
+				if i+1 < len(cmd) && cmd[i+1] == '"' {
+					i++
+					continue
+				}
+				inDouble = false
+			}
+			continue
+		}
+
+		if ch == '`' {
+			if i+1 < len(cmd) {
+				i++
+			}
+			continue
+		}
+		if ch == '<' && i+1 < len(cmd) && cmd[i+1] == '#' {
+			return true
+		}
+		if ch == '#' && isPSLineCommentStart(cmd, i) {
+			i = skipPSLineComment(cmd, i)
+			continue
+		}
+		if ch == '\'' {
+			inSingle = true
+			continue
+		}
+		if ch == '"' {
+			inDouble = true
+			continue
+		}
+		switch ch {
+		case ';', '|', '&', '>', '<', '(', ')', '{', '}':
+			return true
 		}
 	}
 	return false
+}
+
+func findUnquotedPSCommentIndex(cmd string) int {
+	inSingle := false
+	inDouble := false
+
+	for i := 0; i < len(cmd); i++ {
+		ch := cmd[i]
+		if inSingle {
+			if ch == '\'' {
+				if i+1 < len(cmd) && cmd[i+1] == '\'' {
+					i++
+					continue
+				}
+				inSingle = false
+			}
+			continue
+		}
+		if inDouble {
+			if ch == '`' {
+				if i+1 < len(cmd) {
+					i++
+				}
+				continue
+			}
+			if ch == '"' {
+				if i+1 < len(cmd) && cmd[i+1] == '"' {
+					i++
+					continue
+				}
+				inDouble = false
+			}
+			continue
+		}
+
+		if ch == '`' {
+			if i+1 < len(cmd) {
+				i++
+			}
+			continue
+		}
+		if ch == '<' && i+1 < len(cmd) && cmd[i+1] == '#' {
+			i = skipPSBlockComment(cmd, i)
+			continue
+		}
+		if ch == '#' && isPSLineCommentStart(cmd, i) {
+			return i
+		}
+		if ch == '\'' {
+			inSingle = true
+			continue
+		}
+		if ch == '"' {
+			inDouble = true
+			continue
+		}
+	}
+	return -1
+}
+
+func hasUnquotedChainOpPS(cmd string) bool {
+	parts := splitPowerShellChain(cmd, true)
+	return len(parts) > 1 || (len(parts) == 1 && parts[0].OpAfter != "")
+}
+
+func isChainPartsNonTrivial(parts []shellChainPart) bool {
+	return len(parts) > 1 || (len(parts) == 1 && parts[0].OpAfter != "")
+}
+
+func rewriteNestedPowerShellChains(expr string, indent string) string {
+	var out strings.Builder
+	inSingle := false
+	inDouble := false
+	var delims []psDelimSpan
+	lastCopied := 0
+
+	for i := 0; i < len(expr); i++ {
+		ch := expr[i]
+		if inSingle {
+			if ch == '\'' {
+				if i+1 < len(expr) && expr[i+1] == '\'' {
+					i++
+					continue
+				}
+				inSingle = false
+			}
+			continue
+		}
+		if inDouble {
+			if ch == '`' {
+				if i+1 < len(expr) {
+					i++
+				}
+				continue
+			}
+			if ch == '"' {
+				if i+1 < len(expr) && expr[i+1] == '"' {
+					i++
+					continue
+				}
+				inDouble = false
+			}
+			continue
+		}
+
+		if ch == '`' {
+			if i+1 < len(expr) {
+				i++
+			}
+			continue
+		}
+		if ch == '<' && i+1 < len(expr) && expr[i+1] == '#' {
+			i = skipPSBlockComment(expr, i)
+			continue
+		}
+		if ch == '#' && isPSLineCommentStart(expr, i) {
+			i = skipPSLineComment(expr, i)
+			continue
+		}
+		if ch == '\'' {
+			inSingle = true
+			continue
+		}
+		if ch == '"' {
+			inDouble = true
+			continue
+		}
+
+		if ch == '(' || ch == '{' {
+			delims = append(delims, psDelimSpan{ch: ch, start: i})
+			continue
+		}
+		if (ch == ')' && len(delims) > 0 && delims[len(delims)-1].ch == '(') ||
+			(ch == '}' && len(delims) > 0 && delims[len(delims)-1].ch == '{') {
+			span := delims[len(delims)-1]
+			delims = delims[:len(delims)-1]
+			if len(delims) == 0 {
+				inner := expr[span.start+1 : i]
+				innerParts := splitPowerShellChain(inner, false)
+				if isChainPartsNonTrivial(innerParts) {
+					out.WriteString(expr[lastCopied:span.start])
+					innerIndent := indent + "    "
+					bodyLines := emitPSChainLines(innerParts, innerIndent)
+					if span.ch == '{' {
+						out.WriteString("{\n")
+						out.WriteString(strings.Join(bodyLines, "\n"))
+						out.WriteString("\n" + indent + "}")
+					} else {
+						isSubExprOrArray := span.start > 0 && (expr[span.start-1] == '$' || expr[span.start-1] == '@')
+						if isSubExprOrArray {
+							out.WriteString("(\n")
+						} else {
+							out.WriteString("$(\n")
+						}
+						out.WriteString(strings.Join(bodyLines, "\n"))
+						out.WriteString("\n" + indent + ")")
+					}
+					lastCopied = i + 1
+				} else {
+					rewrittenInner := rewriteNestedPowerShellChains(inner, indent)
+					if rewrittenInner != inner {
+						out.WriteString(expr[lastCopied : span.start+1])
+						out.WriteString(rewrittenInner)
+						out.WriteByte(ch)
+						lastCopied = i + 1
+					}
+				}
+			}
+		}
+	}
+
+	out.WriteString(expr[lastCopied:])
+	return out.String()
+}
+
+func emitPSChainLines(parts []shellChainPart, indent string) []string {
+	var lines []string
+	hasPrev := false
+	prevOp := ""
+
+	for _, part := range parts {
+		cmd := strings.TrimSpace(part.Command)
+		if cmd != "" {
+			stepIndent := indent
+			if hasPrev && (prevOp == "&&" || prevOp == "||") {
+				stepIndent = indent + "    "
+			}
+			rewrittenCmd := rewriteNestedPowerShellChains(cmd, stepIndent)
+			if !hasPrev {
+				lines = append(lines,
+					fmt.Sprintf("%s$global:LASTEXITCODE = $null", indent),
+					fmt.Sprintf("%s%s", indent, rewrittenCmd),
+					fmt.Sprintf("%sif ($null -ne $LASTEXITCODE) { $_ok = ($LASTEXITCODE -eq 0) } else { $_ok = $? }", indent),
+				)
+				hasPrev = true
+			} else if prevOp == "&&" {
+				lines = append(lines,
+					fmt.Sprintf("%sif ($_ok) {", indent),
+					fmt.Sprintf("%s$global:LASTEXITCODE = $null", stepIndent),
+					fmt.Sprintf("%s%s", stepIndent, rewrittenCmd),
+					fmt.Sprintf("%sif ($null -ne $LASTEXITCODE) { $_ok = ($LASTEXITCODE -eq 0) } else { $_ok = $? }", stepIndent),
+					fmt.Sprintf("%s}", indent),
+				)
+			} else if prevOp == "||" {
+				lines = append(lines,
+					fmt.Sprintf("%sif (-not $_ok) {", indent),
+					fmt.Sprintf("%s$global:LASTEXITCODE = $null", stepIndent),
+					fmt.Sprintf("%s%s", stepIndent, rewrittenCmd),
+					fmt.Sprintf("%sif ($null -ne $LASTEXITCODE) { $_ok = ($LASTEXITCODE -eq 0) } else { $_ok = $? }", stepIndent),
+					fmt.Sprintf("%s}", indent),
+				)
+			}
+		}
+		prevOp = part.OpAfter
+	}
+	return lines
+}
+
+func formatSinglePSCommand(trimmed string) string {
+	rewritten := rewriteNestedPowerShellChains(trimmed, "    ")
+	if commentIdx := findUnquotedPSCommentIndex(rewritten); commentIdx >= 0 {
+		before := strings.TrimRight(rewritten[:commentIdx], " \t")
+		comment := rewritten[commentIdx:]
+		if before == "" || hasUnquotedShellMetaPS(before) || strings.HasSuffix(before, "@args") {
+			return rewritten
+		}
+		return before + " @args " + comment
+	}
+	if hasUnquotedShellMetaPS(rewritten) || strings.HasSuffix(strings.TrimSpace(rewritten), "@args") {
+		return rewritten
+	}
+	return rewritten + " @args"
 }
 
 // RenderPowerShellBlock renders the complete delimited alias block compatible with both
@@ -340,32 +696,31 @@ func RenderPowerShellBlock(aliases []AliasEntry) string {
 
 		trimmed := strings.TrimSpace(a.Command)
 		if strings.EqualFold(trimmed, "clear") || strings.EqualFold(trimmed, "Clear-Host") {
-			lines = append(lines, fmt.Sprintf("function %s { Clear-Host }", a.Name))
+			lines = append(lines,
+				fmt.Sprintf("function %s {", a.Name),
+				"    Clear-Host",
+				"}",
+			)
 			continue
 		}
 
-		parts := splitShellChain(trimmed)
-		if len(parts) == 1 {
-			if hasUnquotedShellMeta(trimmed) {
-				lines = append(lines, fmt.Sprintf("function %s { %s }", a.Name, trimmed))
-			} else {
-				lines = append(lines, fmt.Sprintf("function %s { %s @args }", a.Name, trimmed))
+		parts := splitPowerShellChain(trimmed, false)
+		if !isChainPartsNonTrivial(parts) {
+			single := formatSinglePSCommand(trimmed)
+			if !hasUnquotedChainOpPS(single) {
+				lines = append(lines,
+					fmt.Sprintf("function %s {", a.Name),
+					fmt.Sprintf("    %s", single),
+					"}",
+				)
+				continue
 			}
-			continue
+			// Fallback if unbalanced parentheses/braces hid an unquoted && or ||.
+			parts = splitPowerShellChain(trimmed, true)
 		}
 
 		lines = append(lines, fmt.Sprintf("function %s {", a.Name))
-		for _, part := range parts {
-			if part.Command != "" {
-				lines = append(lines, fmt.Sprintf("    %s", part.Command))
-			}
-			switch part.OpAfter {
-			case "&&":
-				lines = append(lines, "    if (-not $?) { return }")
-			case "||":
-				lines = append(lines, "    if ($?) { return }")
-			}
-		}
+		lines = append(lines, emitPSChainLines(parts, "    ")...)
 		lines = append(lines, "}")
 	}
 
@@ -479,10 +834,28 @@ func detectLineEnding(existing string, shell ShellKind) string {
 	return "\n"
 }
 
+func resolveProfileWritePath(path string) string {
+	info, err := os.Lstat(path)
+	if err != nil || info.Mode()&os.ModeSymlink == 0 {
+		return path
+	}
+	if resolved, err := filepath.EvalSymlinks(path); err == nil && resolved != "" {
+		return resolved
+	}
+	if linkTarget, err := os.Readlink(path); err == nil && linkTarget != "" {
+		if !filepath.IsAbs(linkTarget) {
+			linkTarget = filepath.Join(filepath.Dir(path), linkTarget)
+		}
+		return filepath.Clean(linkTarget)
+	}
+	return path
+}
+
 func syncProfileFile(target ProfileTarget, aliases []AliasEntry) (bool, error) {
 	block := renderBlockForShell(target.Shell, aliases)
+	writePath := resolveProfileWritePath(target.Path)
 
-	raw, err := os.ReadFile(target.Path)
+	raw, err := os.ReadFile(writePath)
 	fileExists := err == nil
 	if err != nil && !os.IsNotExist(err) {
 		return false, fmt.Errorf("failed to read %s: %w", target.Path, err)
@@ -507,13 +880,13 @@ func syncProfileFile(target ProfileTarget, aliases []AliasEntry) (bool, error) {
 		return false, nil
 	}
 
-	if err := os.MkdirAll(filepath.Dir(target.Path), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(writePath), 0755); err != nil {
 		return false, fmt.Errorf("failed to create directory for %s: %w", target.Path, err)
 	}
 
 	mode := os.FileMode(0644)
 	if fileExists {
-		if info, statErr := os.Stat(target.Path); statErr == nil {
+		if info, statErr := os.Stat(writePath); statErr == nil {
 			mode = info.Mode()
 		}
 	}
@@ -524,7 +897,7 @@ func syncProfileFile(target ProfileTarget, aliases []AliasEntry) (bool, error) {
 	}
 	outBytes = append(outBytes, []byte(nextContent)...)
 
-	tmpFile, err := os.CreateTemp(filepath.Dir(target.Path), ".minhthetus-alias-*")
+	tmpFile, err := os.CreateTemp(filepath.Dir(writePath), ".minhthetus-alias-*")
 	if err != nil {
 		return false, fmt.Errorf("failed to create temp file for %s: %w", target.Path, err)
 	}
@@ -547,7 +920,7 @@ func syncProfileFile(target ProfileTarget, aliases []AliasEntry) (bool, error) {
 	if err := os.Chmod(tmpPath, mode); err != nil {
 		return false, fmt.Errorf("failed to set permissions on %s: %w", target.Path, err)
 	}
-	if err := os.Rename(tmpPath, target.Path); err != nil {
+	if err := os.Rename(tmpPath, writePath); err != nil {
 		return false, fmt.Errorf("failed to replace %s: %w", target.Path, err)
 	}
 	writeOK = true

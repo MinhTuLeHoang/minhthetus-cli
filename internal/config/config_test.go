@@ -100,3 +100,41 @@ func TestReadFile_BackwardsCompatibleSliceDefault(t *testing.T) {
 		t.Fatalf("expected loaded=[{work}], got %#v", loaded)
 	}
 }
+
+func TestWriteFile_AtomicWriteAndNoLeftoverTempFiles(t *testing.T) {
+	tmpHome := t.TempDir()
+	setTestHome(t, tmpHome)
+
+	type objCfg struct {
+		Aliases []string `json:"aliases"`
+	}
+
+	if err := WriteFile("obj.json", objCfg{Aliases: []string{"gs"}}); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+	if err := WriteFile("obj.json", objCfg{Aliases: []string{"gs", "gp"}}); err != nil {
+		t.Fatalf("second WriteFile failed: %v", err)
+	}
+
+	var loaded objCfg
+	if err := ReadFile("obj.json", &loaded); err != nil {
+		t.Fatalf("ReadFile failed: %v", err)
+	}
+	if len(loaded.Aliases) != 2 || loaded.Aliases[1] != "gp" {
+		t.Fatalf("unexpected loaded aliases: %#v", loaded)
+	}
+
+	configDir, err := GetConfigDir()
+	if err != nil {
+		t.Fatalf("GetConfigDir failed: %v", err)
+	}
+	entries, err := os.ReadDir(configDir)
+	if err != nil {
+		t.Fatalf("ReadDir failed: %v", err)
+	}
+	for _, entry := range entries {
+		if entry.Name() != "obj.json" {
+			t.Fatalf("unexpected leftover file in config dir: %s", entry.Name())
+		}
+	}
+}

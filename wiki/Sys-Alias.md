@@ -46,8 +46,8 @@ minhthetus-cli sys alias
     *   Prompts for an optional case-insensitive search query (leave empty to display all configured aliases sorted alphabetically).
     *   Displays aligned columns (`NAME`, `COMMAND`) and target shell profile paths, automatically opening a scrollable viewport for long lists.
 3.  **Add Alias**:
-    *   Validates the alias name (`^[a-zA-Z_][a-zA-Z0-9_-]*$`, rejecting `minhthetus-cli`) and checks for case-insensitive duplicates with overwrite confirmation.
-    *   Prompts for a single-line command, saves `~/.minhthetus-cli/aliases.json`, and syncs shell profiles.
+    *   Validates the alias name (`^[a-zA-Z_][a-zA-Z0-9_-]*$`, rejecting `minhthetus-cli` and reserved PowerShell/POSIX keywords such as `if`, `for`, `switch`, `exit`, `return`, `in`, etc.) and checks for case-insensitive duplicates with overwrite confirmation.
+    *   Prompts for a single-line command (rejecting empty commands or malformed leading/trailing `&&`/`||` chains), saves `~/.minhthetus-cli/aliases.json`, and syncs shell profiles.
 4.  **Edit Alias**:
     *   Selects an existing alias to update its name and/or command (clearing any preset `kind` if the command is customized), then persists and syncs profiles.
 5.  **Delete Alias**:
@@ -61,8 +61,9 @@ minhthetus-cli sys alias
 7.  **Cross-Shell Synchronization & Reload Hint**:
     *   Updates an idempotent delimited block (`# >>> minhthetus-cli aliases >>>` ... `# <<< minhthetus-cli aliases <<<`) in detected shell profiles without altering surrounding user configuration:
         *   **macOS / Linux**: `~/.zshrc`, `~/.bashrc`, `~/.bash_profile`.
-        *   **Windows**: Windows PowerShell 5.1 (`WindowsPowerShell\Microsoft.PowerShell_profile.ps1`), PowerShell 7+ (`PowerShell\Microsoft.PowerShell_profile.ps1`), and Git Bash (`~/.bashrc`, `~/.bash_profile`), emitting PowerShell 5.1-compatible functions (`Remove-Item Alias:<name>` + `function`, without `&&`/`||`).
+        *   **Windows**: Windows PowerShell 5.1 (`WindowsPowerShell\Microsoft.PowerShell_profile.ps1`), PowerShell 7+ (`PowerShell\Microsoft.PowerShell_profile.ps1`), and Git Bash (`~/.bashrc`, `~/.bash_profile`), emitting PowerShell 5.1-compatible multi-line functions (`Remove-Item Alias:<name>` + `function`, without raw `&&`/`||`).
     *   On exit after any change, prints a shell-specific reload command (`source ~/.zshrc`, `source ~/.bashrc`, or `. $PROFILE`).
+    *   If `~/.minhthetus-cli/aliases.json` contains malformed JSON, displays the full config path and offers to back it up (`aliases.json.bak`) and reset to defaults.
 
 ## Version History
 

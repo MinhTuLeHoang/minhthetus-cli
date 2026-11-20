@@ -1,7 +1,11 @@
 package sys
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -26,6 +30,63 @@ const (
 )
 
 var aliasNamePattern = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_-]*$`)
+
+var reservedAliasKeywords = map[string]bool{
+	"minhthetus-cli": true,
+	// PowerShell & POSIX reserved keywords
+	"if":           true,
+	"else":         true,
+	"elseif":       true,
+	"for":          true,
+	"foreach":      true,
+	"while":        true,
+	"do":           true,
+	"until":        true,
+	"switch":       true,
+	"break":        true,
+	"continue":     true,
+	"return":       true,
+	"function":     true,
+	"filter":       true,
+	"class":        true,
+	"enum":         true,
+	"try":          true,
+	"catch":        true,
+	"finally":      true,
+	"throw":        true,
+	"trap":         true,
+	"param":        true,
+	"begin":        true,
+	"process":      true,
+	"end":          true,
+	"dynamicparam": true,
+	"in":           true,
+	"data":         true,
+	"exit":         true,
+	"default":      true,
+	"case":         true,
+	"esac":         true,
+	"then":         true,
+	"elif":         true,
+	"fi":           true,
+	"done":         true,
+	"select":       true,
+	"time":         true,
+	"coproc":       true,
+}
+
+type aliasConfigParseError struct {
+	Path string
+	Err  error
+}
+
+func (e *aliasConfigParseError) Error() string {
+	return fmt.Sprintf("malformed JSON in %s: %v", e.Path, e.Err)
+}
+
+func (e *aliasConfigParseError) Unwrap() error {
+	return e.Err
+}
 
 // AliasEntry represents a single shell command alias managed by minhthetus-cli.
 type AliasEntry struct {
@@ -92,10 +153,39 @@ func defaultSuggestions() []AliasSuggestion {
 	}
 }
 
+func emptyAliasConfig() AliasConfig {
+	return AliasConfig{
+		Aliases:            []AliasEntry{},
+		AppliedSuggestions: []string{},
+	}
+}
+
 func loadAliasConfig() (AliasConfig, error) {
-	var cfg AliasConfig
-	if err := config.ReadFileWithDefault(aliasConfigFile, []byte(aliasDefaultJSON), &cfg); err != nil {
+	filePath, err := config.GetConfigFilePath(aliasConfigFile)
+	if err != nil {
 		return AliasConfig{}, err
+	}
+
+	raw, err := os.ReadFile(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			cfg := emptyAliasConfig()
+			if writeErr := saveAliasConfig(cfg); writeErr != nil {
+				return AliasConfig{}, writeErr
+			}
+			return cfg, nil
+		}
+		return AliasConfig{}, fmt.Errorf("failed to read %s: %w", filePath, err)
+	}
+
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || string(trimmed) == "[]" {
+		return emptyAliasConfig(), nil
+	}
+
+	var cfg AliasConfig
+	if err := json.Unmarshal(trimmed, &cfg); err != nil {
+		return AliasConfig{}, &aliasConfigParseError{Path: filePath, Err: err}
 	}
 	if cfg.Aliases == nil {
 		cfg.Aliases = []AliasEntry{}
@@ -104,6 +194,21 @@ func loadAliasConfig() (AliasConfig, error) {
 		cfg.AppliedSuggestions = []string{}
 	}
 	return cfg, nil
+}
+
+func backupAndResetAliasConfig(filePath string) (string, error) {
+	raw, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read corrupted config %s: %w", filePath, err)
+	}
+	backupPath := filePath + ".bak"
+	if err := os.WriteFile(backupPath, raw, 0644); err != nil {
+		return "", fmt.Errorf("failed to write backup %s: %w", backupPath, err)
+	}
+	if err := saveAliasConfig(emptyAliasConfig()); err != nil {
+		return "", fmt.Errorf("failed to reset %s: %w", filePath, err)
+	}
+	return backupPath, nil
 }
 
 func saveAliasConfig(cfg AliasConfig) error {
@@ -121,8 +226,8 @@ func validateAliasName(name string) error {
 	if name == "" {
 		return fmt.Errorf("alias name cannot be empty")
 	}
-	if strings.EqualFold(name, "minhthetus-cli") {
-		return fmt.Errorf("alias name %q is reserved", name)
+	if reservedAliasKeywords[strings.ToLower(name)] {
+		return fmt.Errorf("alias name %q is reserved and cannot be used", name)
 	}
 	if !aliasNamePattern.MatchString(name) {
 		return fmt.Errorf("invalid alias name %q: must start with a letter or underscore and contain only letters, digits, '_' or '-'", name)
@@ -138,10 +243,18 @@ func validateAliasCommand(command string) error {
 	if strings.ContainsAny(trimmed, "\r\n") {
 		return fmt.Errorf("alias command must be a single line")
 	}
+	if err := validatePowerShellChainSyntax(trimmed); err != nil {
+		return err
+	}
 	return nil
 }
 
 func findAliasIndex(aliases []AliasEntry, name string) int {
+	for i, a := range aliases {
+		if a.Name == name {
+			return i
+		}
+	}
 	for i, a := range aliases {
 		if strings.EqualFold(a.Name, name) {
 			return i
@@ -271,6 +384,25 @@ func runAliasCLI() {
 	for {
 		cfg, err := loadAliasConfig()
 		if err != nil {
+			var parseErr *aliasConfigParseError
+			if errors.As(err, &parseErr) {
+				fmt.Println(ui.ErrorMessage(fmt.Sprintf("Failed to load aliases config at %s: %v", parseErr.Path, parseErr.Err)))
+				confirmed, confirmErr := ui.Confirm(
+					fmt.Sprintf("Back up malformed config to %s.bak and reset to defaults?", parseErr.Path),
+					0,
+					false,
+				)
+				if confirmErr == nil && confirmed {
+					backupPath, resetErr := backupAndResetAliasConfig(parseErr.Path)
+					if resetErr != nil {
+						fmt.Println(ui.ErrorMessage(resetErr.Error()))
+						return
+					}
+					fmt.Println(ui.SuccessMessage(fmt.Sprintf("Backed up corrupted config to %s and reset defaults.", backupPath)))
+					continue
+				}
+				return
+			}
 			fmt.Println(ui.ErrorMessage(fmt.Sprintf("Failed to load aliases config: %v", err)))
 			return
 		}
@@ -366,21 +498,53 @@ func handleViewSearchAliases(cfg AliasConfig) {
 	fmt.Print(b.String())
 }
 
-func persistAndSync(cfg AliasConfig) ([]ProfileTarget, error) {
+func persistAndSyncWith(cfg AliasConfig, syncFn func([]AliasEntry) ([]ProfileTarget, error)) ([]ProfileTarget, bool, error) {
 	if err := saveAliasConfig(cfg); err != nil {
-		return nil, fmt.Errorf("failed to save aliases config: %w", err)
+		return nil, false, fmt.Errorf("failed to save aliases config: %w", err)
 	}
-	targets, err := syncAllProfiles(cfg.Aliases)
+	targets, err := syncFn(cfg.Aliases)
 	if err != nil {
-		return targets, fmt.Errorf("saved config, but failed to sync shell profile(s): %w", err)
+		return targets, len(targets) > 0, fmt.Errorf("saved config, but failed to sync shell profile(s): %w", err)
 	}
-	return targets, nil
+	return targets, true, nil
+}
+
+func persistAndSync(cfg AliasConfig) ([]ProfileTarget, bool, error) {
+	return persistAndSyncWith(cfg, syncAllProfiles)
 }
 
 func printSyncedProfiles(targets []ProfileTarget) {
 	for _, t := range targets {
 		fmt.Println(ui.GrayStyle().Render(fmt.Sprintf("  Updated %s", t.Path)))
 	}
+}
+
+func chooseAliasEntry(prompt, cancelAction string, aliases []AliasEntry) (AliasEntry, bool) {
+	sorted := sortedAliases(aliases)
+	options := make([]string, 0, len(sorted)+1)
+	for _, a := range sorted {
+		options = append(options, fmt.Sprintf("%-16s -> %s", a.Name, a.Command))
+	}
+	options = append(options, "Cancel")
+
+	choice, err := ui.Choose(prompt, options)
+	if err != nil {
+		fmt.Println(ui.ErrorMessage(fmt.Sprintf("UI error: %v", err)))
+		return AliasEntry{}, false
+	}
+	if choice == "" || choice == "Cancel" {
+		fmt.Println(ui.InfoMessage(fmt.Sprintf("%s cancelled.", cancelAction)))
+		return AliasEntry{}, false
+	}
+
+	for i, opt := range options[:len(sorted)] {
+		if opt == choice {
+			return sorted[i], true
+		}
+	}
+
+	fmt.Println(ui.InfoMessage(fmt.Sprintf("%s cancelled.", cancelAction)))
+	return AliasEntry{}, false
 }
 
 func handleAddAlias(cfg *AliasConfig) ([]ProfileTarget, bool) {
@@ -432,10 +596,13 @@ func handleAddAlias(cfg *AliasConfig) ([]ProfileTarget, bool) {
 		Command: command,
 	})
 
-	targets, err := persistAndSync(*cfg)
+	targets, changed, err := persistAndSync(*cfg)
 	if err != nil {
 		fmt.Println(ui.ErrorMessage(err.Error()))
-		return targets, false
+		if len(targets) > 0 {
+			printSyncedProfiles(targets)
+		}
+		return targets, changed
 	}
 
 	fmt.Println(ui.SuccessMessage(fmt.Sprintf("Added alias '%s' -> '%s'.", name, command)))
@@ -449,36 +616,11 @@ func handleEditAlias(cfg *AliasConfig) ([]ProfileTarget, bool) {
 		return nil, false
 	}
 
-	sorted := sortedAliases(cfg.Aliases)
-	options := make([]string, 0, len(sorted)+1)
-	for _, a := range sorted {
-		options = append(options, fmt.Sprintf("%-16s -> %s", a.Name, a.Command))
-	}
-	options = append(options, "Cancel")
-
-	choice, err := ui.Choose("Select alias to edit", options)
-	if err != nil {
-		fmt.Println(ui.ErrorMessage(fmt.Sprintf("UI error: %v", err)))
-		return nil, false
-	}
-	if choice == "" || choice == "Cancel" {
-		fmt.Println(ui.InfoMessage("Edit cancelled."))
+	target, ok := chooseAliasEntry("Select alias to edit", "Edit", cfg.Aliases)
+	if !ok {
 		return nil, false
 	}
 
-	selectedIdx := -1
-	for i, opt := range options[:len(sorted)] {
-		if opt == choice {
-			selectedIdx = i
-			break
-		}
-	}
-	if selectedIdx < 0 {
-		fmt.Println(ui.InfoMessage("Edit cancelled."))
-		return nil, false
-	}
-
-	target := sorted[selectedIdx]
 	origIdx := findAliasIndex(cfg.Aliases, target.Name)
 	if origIdx < 0 {
 		fmt.Println(ui.ErrorMessage("Selected alias could not be located."))
@@ -520,10 +662,13 @@ func handleEditAlias(cfg *AliasConfig) ([]ProfileTarget, bool) {
 		return nil, false
 	}
 
-	targets, err := persistAndSync(*cfg)
+	targets, changed, err := persistAndSync(*cfg)
 	if err != nil {
 		fmt.Println(ui.ErrorMessage(err.Error()))
-		return targets, false
+		if len(targets) > 0 {
+			printSyncedProfiles(targets)
+		}
+		return targets, changed
 	}
 
 	fmt.Println(ui.SuccessMessage(fmt.Sprintf("Updated alias '%s' -> '%s'.", newName, newCommand)))
@@ -537,36 +682,11 @@ func handleDeleteAlias(cfg *AliasConfig) ([]ProfileTarget, bool) {
 		return nil, false
 	}
 
-	sorted := sortedAliases(cfg.Aliases)
-	options := make([]string, 0, len(sorted)+1)
-	for _, a := range sorted {
-		options = append(options, fmt.Sprintf("%-16s -> %s", a.Name, a.Command))
-	}
-	options = append(options, "Cancel")
-
-	choice, err := ui.Choose("Select alias to delete", options)
-	if err != nil {
-		fmt.Println(ui.ErrorMessage(fmt.Sprintf("UI error: %v", err)))
-		return nil, false
-	}
-	if choice == "" || choice == "Cancel" {
-		fmt.Println(ui.InfoMessage("Delete cancelled."))
+	target, ok := chooseAliasEntry("Select alias to delete", "Delete", cfg.Aliases)
+	if !ok {
 		return nil, false
 	}
 
-	selectedIdx := -1
-	for i, opt := range options[:len(sorted)] {
-		if opt == choice {
-			selectedIdx = i
-			break
-		}
-	}
-	if selectedIdx < 0 {
-		fmt.Println(ui.InfoMessage("Delete cancelled."))
-		return nil, false
-	}
-
-	target := sorted[selectedIdx]
 	confirmed, err := ui.Confirm(
 		fmt.Sprintf("Are you sure you want to delete alias '%s' (%s)?", target.Name, target.Command),
 		0,
@@ -588,15 +708,35 @@ func handleDeleteAlias(cfg *AliasConfig) ([]ProfileTarget, bool) {
 		return nil, false
 	}
 
-	targets, err := persistAndSync(*cfg)
+	targets, changed, err := persistAndSync(*cfg)
 	if err != nil {
 		fmt.Println(ui.ErrorMessage(err.Error()))
-		return targets, false
+		if len(targets) > 0 {
+			printSyncedProfiles(targets)
+		}
+		return targets, changed
 	}
 
 	fmt.Println(ui.SuccessMessage(fmt.Sprintf("Deleted alias '%s'.", target.Name)))
 	printSyncedProfiles(targets)
 	return targets, true
+}
+
+func persistSuggestionsWith(nextCfg AliasConfig, syncFn func([]AliasEntry) ([]ProfileTarget, error)) ([]ProfileTarget, bool, error) {
+	targets, syncErr := syncFn(nextCfg.Aliases)
+	if syncErr != nil && len(targets) == 0 {
+		return nil, false, fmt.Errorf("failed to sync shell profile(s) (suggestions were not marked applied): %w", syncErr)
+	}
+	if err := saveAliasConfig(nextCfg); err != nil {
+		if len(targets) > 0 {
+			return targets, true, fmt.Errorf("synced %d shell profile(s), but failed to save aliases config: %w", len(targets), err)
+		}
+		return nil, false, fmt.Errorf("failed to save aliases config: %w", err)
+	}
+	if syncErr != nil {
+		return targets, true, fmt.Errorf("saved config, but failed to sync all shell profile(s): %w", syncErr)
+	}
+	return targets, true, nil
 }
 
 func handleSuggestions(cfg *AliasConfig) ([]ProfileTarget, bool) {
@@ -627,10 +767,15 @@ func handleSuggestions(cfg *AliasConfig) ([]ProfileTarget, bool) {
 		return nil, false
 	}
 
+	nextCfg := AliasConfig{
+		Aliases:            append([]AliasEntry(nil), cfg.Aliases...),
+		AppliedSuggestions: append([]string(nil), cfg.AppliedSuggestions...),
+	}
+
 	appliedCount := 0
 	for _, s := range chosen {
-		if idx := findAliasIndex(cfg.Aliases, s.Name); idx >= 0 {
-			existing := cfg.Aliases[idx]
+		if idx := findAliasIndex(nextCfg.Aliases, s.Name); idx >= 0 {
+			existing := nextCfg.Aliases[idx]
 			confirmed, err := ui.Confirm(
 				fmt.Sprintf("Alias '%s' already exists (%s). Overwrite with suggested command?", existing.Name, existing.Command),
 				0,
@@ -642,12 +787,12 @@ func handleSuggestions(cfg *AliasConfig) ([]ProfileTarget, bool) {
 			}
 		}
 
-		upsertAliasEntry(cfg, AliasEntry{
+		upsertAliasEntry(&nextCfg, AliasEntry{
 			Name:    s.Name,
 			Command: s.Command,
 			Kind:    s.Kind,
 		})
-		markSuggestionApplied(cfg, s.ID)
+		markSuggestionApplied(&nextCfg, s.ID)
 		appliedCount++
 	}
 
@@ -656,12 +801,17 @@ func handleSuggestions(cfg *AliasConfig) ([]ProfileTarget, bool) {
 		return nil, false
 	}
 
-	targets, err := persistAndSync(*cfg)
+	targets, changed, err := persistSuggestionsWith(nextCfg, syncAllProfiles)
 	if err != nil {
 		fmt.Println(ui.ErrorMessage(err.Error()))
-		return targets, false
+		if changed {
+			*cfg = nextCfg
+			printSyncedProfiles(targets)
+		}
+		return targets, changed
 	}
 
+	*cfg = nextCfg
 	fmt.Println(ui.SuccessMessage(fmt.Sprintf("Applied %d suggested alias(es).", appliedCount)))
 	printSyncedProfiles(targets)
 

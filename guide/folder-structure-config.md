@@ -77,7 +77,7 @@ This hidden directory is automatically created in your home folder when you firs
 - **Purpose**: Stores user-managed shell command aliases and tracks applied built-in suggestions.
 - **Supported CLI**: `minhthetus-cli sys alias`
 - **Functionality**:
-  - Persists managed aliases as the single source of truth for cross-shell synchronization.
+  - Persists managed aliases atomically as the single source of truth for cross-shell synchronization (preserving symlinked Unix dotfiles when syncing).
   - Tracks applied suggestions (`master`, `pull`, `c`) so selected suggestions do not reappear on subsequent runs.
   - Synchronized into delimited `# >>> minhthetus-cli aliases >>>` ... `# <<< minhthetus-cli aliases <<<` blocks across `~/.zshrc`, `~/.bashrc`, `~/.bash_profile`, and Windows PowerShell (`5.1` and `7+`) profiles.
 
