@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-11-20
+
+### Added
+- Added dynamic per-repository tag rules (.git/config + ~/.minhthetus-cli/git-tag-presets.json) with smart tag prefix auto-discovery and auto-learning to git tag-dev-stg
+- Added --reconfig (-c), --pick (-p), --prod flags and custom semantic version input to git tag-dev-stg
+
+### Changed
+- Upgraded git tag-dev-stg with atomic local/remote pre-flight tag validation and sequential independent tag creation & push
+
 ## [1.12.0] - 2026-11-20
 
 ### Added
