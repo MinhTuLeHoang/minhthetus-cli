@@ -20,6 +20,20 @@ func (m multiChooseModel) Init() tea.Cmd {
 }
 
 func (m multiChooseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if len(m.options) == 0 {
+		if keyMsg, ok := msg.(tea.KeyMsg); ok && (keyMsg.String() == "ctrl+c" || keyMsg.String() == "esc") {
+			m.canceled = true
+		}
+		m.quitting = true
+		return m, tea.Quit
+	}
+
+	if m.cursor < 0 {
+		m.cursor = 0
+	} else if m.cursor >= len(m.options) {
+		m.cursor = len(m.options) - 1
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -36,7 +50,9 @@ func (m multiChooseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor = 0
 			}
 		case " ":
-			m.selected[m.cursor] = !m.selected[m.cursor]
+			if m.cursor >= 0 && m.cursor < len(m.selected) {
+				m.selected[m.cursor] = !m.selected[m.cursor]
+			}
 		case "enter":
 			m.quitting = true
 			return m, tea.Quit
@@ -81,6 +97,16 @@ func (m multiChooseModel) View() string {
 
 // MultiChoose displays a list of options allowing multi-selection using space, and returns a boolean slice of selections.
 func MultiChoose(title string, options []string, preselected []bool, initialCursor int) ([]bool, error) {
+	if len(options) == 0 {
+		return []bool{}, nil
+	}
+
+	if initialCursor < 0 {
+		initialCursor = 0
+	} else if initialCursor >= len(options) {
+		initialCursor = len(options) - 1
+	}
+
 	selected := make([]bool, len(options))
 	copy(selected, preselected)
 

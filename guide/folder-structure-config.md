@@ -59,6 +59,28 @@ This hidden directory is automatically created in your home folder when you firs
   - The CLI normally runs in a subshell, meaning it cannot change the environment of your primary terminal (like changing directories or switching Node versions).
   - This wrapper captures specific shell commands emitted by the CLI into a temporary file and "sources" them in your current session.
 
+### 4. `aliases.json`
+- **File Type**: `JSON`
+- **Data Interface**:
+  ```typescript
+  interface AliasEntry {
+    name: string;   // Alias name (e.g., "master", "pull", "c")
+    command: string; // Shell command to execute
+    kind?: string;  // Optional preset identifier (e.g., "preset:master")
+  }
+
+  interface AliasConfig {
+    aliases: AliasEntry[];
+    applied_suggestions: string[]; // Sticky IDs of applied built-in suggestions
+  }
+  ```
+- **Purpose**: Stores user-managed shell command aliases and tracks applied built-in suggestions.
+- **Supported CLI**: `minhthetus-cli sys alias`
+- **Functionality**:
+  - Persists managed aliases as the single source of truth for cross-shell synchronization.
+  - Tracks applied suggestions (`master`, `pull`, `c`) so selected suggestions do not reappear on subsequent runs.
+  - Synchronized into delimited `# >>> minhthetus-cli aliases >>>` ... `# <<< minhthetus-cli aliases <<<` blocks across `~/.zshrc`, `~/.bashrc`, `~/.bash_profile`, and Windows PowerShell (`5.1` and `7+`) profiles.
+
 ---
 
 ## Shell Completion Profiles (Managed Outside `~/.minhthetus-cli/`)
@@ -79,6 +101,7 @@ Rather than generating static `completion.zsh`/`completion.bash` files inside `~
 - **Creation**: The directory, config files, and shell integrations are managed by the Go implementation:
   - **cmd/setup_completion.go**, **cmd/completion_windows.go**, **cmd/completion_other.go**: Manage fast cross-platform shell detection, `--shell` overrides, and RC/profile completion hooks.
   - **cmd/uninstall.go**: Performs block-aware cleanup of shell completion hooks and binary removal.
+  - **cmd/sys/alias.go** & **cmd/sys/alias_shell.go**: Manage `aliases.json` persistence and cross-shell profile synchronization.
   - **internal/config/**: Manages `~/.minhthetus-cli/` JSON configuration files.
   - **internal/git/**: Handles Git account and repository tracking logic.
 - **Permissions**: Configuration files are stored with restricted permissions to protect sensitive information.

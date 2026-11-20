@@ -35,6 +35,7 @@ Use the sidebar on the right or the links below to explore specific features:
 *   [[Remote-Scripts-Utils-GenQR]]: Generate QR codes from text/URLs directly in the terminal.
 
 ### System Utilities
+*   [[Sys-Alias]]: Interactively manage shell command aliases and apply built-in suggestions across Bash, Zsh, and PowerShell.
 *   [[Sys-Size]]: Lists the size of all files and folders in the current directory, sorted by size descending.
 *   [[Sys-Clean-My-Mac]]: Cleans up macOS caches, logs, and temp files using mac-cleaner-cli.
 *   [[Sys-Host]]: Interactive search, view, addition, deletion, and formatting/sorting of the /etc/hosts file.
