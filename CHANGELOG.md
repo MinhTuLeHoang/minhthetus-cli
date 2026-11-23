@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.1] - 2026-11-23
+
+### Added
+- Multi-host and multi-line input support in sys host
+
+### Changed
+- Removed character limit restriction in terminal text input
+
+### Fixed
+- Fix issue where multi-host inputs misclassified IP addresses as domains
+
 ## [1.12.0] - 2026-11-20
 
 ### Added
