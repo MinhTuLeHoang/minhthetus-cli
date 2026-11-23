@@ -140,3 +140,4 @@ func TestParseAddHostInput_OnlyDomains(t *testing.T) {
 		t.Errorf("unexpected unassignedDomains: %v", unassignedDomains)
 	}
 }
+
