@@ -40,7 +40,8 @@ When formatting or writing back changes, the file is standardized using these st
 ## Version History
 
 * **First Stable Version Supported**: `v1.6.0`
-* **Latest Stable Version Update**: `v1.11.4`
+* **Latest Stable Version Update**: `v1.12.1`
 
+- **v1.12.1**: Added multi-host and multi-line input support in `Add Host`, unlimited input buffer length, and robust IP-domain stream grouping.
 - **v1.11.4**: Added Windows support (`%SystemRoot%\System32\drivers\etc\hosts` with Administrator UAC elevation), automatic DNS cache flushing (`ipconfig /flushdns`), and interactive scrollable viewport for search results starting from the top.
 - **v1.6.0**: Added interactive search, view, addition, deletion, and formatting/sorting of the `/etc/hosts` file.
