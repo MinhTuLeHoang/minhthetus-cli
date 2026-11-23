@@ -14,7 +14,7 @@ When you run the command, it opens an interactive menu using Bubble Tea with the
 
 1. **Search Hosts**: Query hosts file for domains or IPs. It displays exact matches along with relevant results (e.g. sharing the same IP or the same normalized domain). When relevant results or matches are long, an interactive scrollable viewer opens starting at the top so exact matches are never pushed out of view.
 2. **Show All Hosts**: Lists all parsed host entries cleanly, sorted according to the formatting rules (using the scroll viewer if list is long).
-3. **Add Host**: Interactively add a new IP-domain mapping. If you enter only one of the values, the CLI will prompt you for the missing piece. It automatically validates against duplicates.
+3. **Add Host**: Interactively add one or multiple IP-domain mappings. Supports single entries, multi-line pastes, and multiple host groups in a single input. If you enter only domains or only an IP, the CLI will prompt for the missing piece. Automatically validates against duplicates.
 4. **Delete Host**: Filters entries by query, prompts you to select an host, and requests confirmation before deleting it.
 5. **Format & Sort hosts file**: Standardizes the layout of the `/etc/hosts` file based on the formatting rules.
 
@@ -40,7 +40,8 @@ When formatting or writing back changes, the file is standardized using these st
 ## Version History
 
 * **First Stable Version Supported**: `v1.6.0`
-* **Latest Stable Version Update**: `v1.11.4`
+* **Latest Stable Version Update**: `v1.12.1`
 
+- **v1.12.1**: Added multi-host and multi-line input support in `Add Host`, unlimited input buffer length, and robust IP-domain stream grouping.
 - **v1.11.4**: Added Windows support (`%SystemRoot%\System32\drivers\etc\hosts` with Administrator UAC elevation), automatic DNS cache flushing (`ipconfig /flushdns`), and interactive scrollable viewport for search results starting from the top.
 - **v1.6.0**: Added interactive search, view, addition, deletion, and formatting/sorting of the `/etc/hosts` file.

@@ -424,9 +424,91 @@ func showAllEntries(entries []HostEntry) error {
 	return nil
 }
 
-// addEntry adds a domain-IP entry, prompting for missing details and checking duplicates
+// HostInputGroup represents an IP and its associated domains parsed from input
+type HostInputGroup struct {
+	IP      string
+	Domains []string
+}
+
+// parseAddHostInput parses raw input text (single line, multi-line, or space-separated stream)
+// into structured HostInputGroup items, along with any unassigned IPs or domains.
+func parseAddHostInput(input string) (groups []HostInputGroup, unassignedIPs []string, unassignedDomains []string) {
+	lines := strings.Split(input, "\n")
+	for _, line := range lines {
+		// Strip comments
+		if idx := strings.Index(line, "#"); idx >= 0 {
+			line = line[:idx]
+		}
+		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			continue
+		}
+
+		var currentIP string
+		var currentDomains []string
+
+		for _, token := range fields {
+			cleanToken := strings.Trim(token, `",';`)
+			cleanToken = strings.TrimPrefix(cleanToken, "http://")
+			cleanToken = strings.TrimPrefix(cleanToken, "https://")
+			cleanToken = strings.TrimRight(cleanToken, "/")
+
+			if cleanToken == "" {
+				continue
+			}
+
+			if _, ok := parseIP(cleanToken); ok {
+				if currentIP != "" {
+					if len(currentDomains) > 0 {
+						groups = append(groups, HostInputGroup{IP: currentIP, Domains: currentDomains})
+						currentDomains = nil
+					} else {
+						unassignedIPs = append(unassignedIPs, currentIP)
+					}
+				}
+				currentIP = cleanToken
+			} else {
+				if currentIP != "" {
+					currentDomains = append(currentDomains, cleanToken)
+				} else {
+					unassignedDomains = append(unassignedDomains, cleanToken)
+				}
+			}
+		}
+
+		if currentIP != "" {
+			if len(currentDomains) > 0 {
+				groups = append(groups, HostInputGroup{IP: currentIP, Domains: currentDomains})
+			} else {
+				unassignedIPs = append(unassignedIPs, currentIP)
+			}
+		}
+	}
+
+	// Post-processing:
+	// If no groups formed, but exactly 1 unassigned IP and some unassigned domains
+	// (e.g. user typed "google.com 127.0.0.1" where domain was placed before IP)
+	if len(groups) == 0 && len(unassignedIPs) == 1 && len(unassignedDomains) > 0 {
+		groups = append(groups, HostInputGroup{
+			IP:      unassignedIPs[0],
+			Domains: unassignedDomains,
+		})
+		unassignedIPs = nil
+		unassignedDomains = nil
+	}
+
+	// If exactly 1 group and leading unassigned domains (e.g. "foo.com 127.0.0.1 bar.com")
+	if len(groups) == 1 && len(unassignedIPs) == 0 && len(unassignedDomains) > 0 {
+		groups[0].Domains = append(unassignedDomains, groups[0].Domains...)
+		unassignedDomains = nil
+	}
+
+	return groups, unassignedIPs, unassignedDomains
+}
+
+// addEntry adds domain-IP entries, supporting single or multi-host input, prompting for missing details and checking duplicates
 func addEntry(headerComments []string, entries []HostEntry) error {
-	input, err := ui.Input("Enter IP and/or Domains (e.g., 127.0.0.1 google.com facebook.com)", "")
+	input, err := ui.Input("Enter IP and/or Domains (e.g., 127.0.0.1 google.com, or paste multiple lines)", "")
 	if err != nil {
 		return err
 	}
@@ -436,96 +518,117 @@ func addEntry(headerComments []string, entries []HostEntry) error {
 		return nil
 	}
 
-	parts := strings.Fields(input)
-	var ipStr string
-	var domains []string
+	groups, unassignedIPs, unassignedDomains := parseAddHostInput(input)
 
-	if len(parts) == 1 {
-		val := parts[0]
-		_, ok := parseIP(val)
-		if ok {
-			ipStr = val
-			domainInput, err := ui.Input("Enter Domains for "+ipStr, "")
-			if err != nil {
-				return err
-			}
-			domains = strings.Fields(domainInput)
+	// If no groups found but only domains were entered, prompt for IP
+	if len(groups) == 0 && len(unassignedIPs) == 0 && len(unassignedDomains) > 0 {
+		var promptMsg string
+		if len(unassignedDomains) == 1 {
+			promptMsg = "Enter IP for " + unassignedDomains[0]
 		} else {
-			domains = []string{val}
-			ipInput, err := ui.Input("Enter IP for "+val, "")
-			if err != nil {
-				return err
-			}
-			ipStr = strings.TrimSpace(ipInput)
+			promptMsg = fmt.Sprintf("Enter IP for %d domains", len(unassignedDomains))
 		}
-	} else if len(parts) >= 2 {
-		_, ok := parseIP(parts[0])
-		if ok {
-			ipStr = parts[0]
-			domains = parts[1:]
-		} else {
-			domains = parts
-			ipInput, err := ui.Input(fmt.Sprintf("Enter IP for %d domains", len(domains)), "")
-			if err != nil {
-				return err
-			}
-			ipStr = strings.TrimSpace(ipInput)
+		ipInput, err := ui.Input(promptMsg, "")
+		if err != nil {
+			return err
+		}
+		ipInput = strings.TrimSpace(ipInput)
+		if ipInput == "" {
+			fmt.Println(ui.ErrorMessage("IP cannot be empty."))
+			return nil
+		}
+		if _, ok := parseIP(ipInput); !ok {
+			fmt.Println(ui.ErrorMessage(fmt.Sprintf("Invalid IP address: %s", ipInput)))
+			return nil
+		}
+		groups = append(groups, HostInputGroup{IP: ipInput, Domains: unassignedDomains})
+		unassignedDomains = nil
+	}
+
+	// If there are unassigned IPs without domains, prompt for domains
+	for _, ip := range unassignedIPs {
+		domainInput, err := ui.Input("Enter Domains for "+ip, "")
+		if err != nil {
+			return err
+		}
+		doms := strings.Fields(domainInput)
+		if len(doms) > 0 {
+			groups = append(groups, HostInputGroup{IP: ip, Domains: doms})
 		}
 	}
 
-	ipStr = strings.TrimSpace(ipStr)
-	if ipStr == "" || len(domains) == 0 {
-		fmt.Println(ui.ErrorMessage("Both IP and at least one Domain are required."))
+	// If there are still unassigned domains left
+	if len(unassignedDomains) > 0 {
+		ipInput, err := ui.Input(fmt.Sprintf("Enter IP for unassigned domains (%s)", strings.Join(unassignedDomains, ", ")), "")
+		if err != nil {
+			return err
+		}
+		ipInput = strings.TrimSpace(ipInput)
+		if ipInput != "" {
+			if _, ok := parseIP(ipInput); ok {
+				groups = append(groups, HostInputGroup{IP: ipInput, Domains: unassignedDomains})
+			}
+		}
+	}
+
+	if len(groups) == 0 {
+		fmt.Println(ui.ErrorMessage("No valid host entries to add."))
 		return nil
 	}
 
-	parsedIP, _ := parseIP(ipStr)
+	var addedEntries []HostEntry
+	var skippedEntries []HostEntry
 
-	var addedDomains []string
-	var skippedDomains []string
+	for _, group := range groups {
+		ipStr := group.IP
+		parsedIP, _ := parseIP(ipStr)
+		priority := getIPPriority(parsedIP, ipStr)
 
-	for _, domain := range domains {
-		domain = strings.TrimSpace(domain)
-		if domain == "" {
-			continue
-		}
-
-		duplicated := false
-		for _, entry := range entries {
-			if entry.IP == ipStr && strings.ToLower(entry.Domain) == strings.ToLower(domain) {
-				duplicated = true
-				break
+		for _, domain := range group.Domains {
+			domain = strings.TrimSpace(domain)
+			if domain == "" {
+				continue
 			}
-		}
 
-		if duplicated {
-			skippedDomains = append(skippedDomains, domain)
-			fmt.Println(ui.WarningMessage(fmt.Sprintf("Host already exists (skipped): %s -> %s", ipStr, domain)))
-		} else {
-			addedDomains = append(addedDomains, domain)
-			newEntry := HostEntry{
-				IP:         ipStr,
-				Domain:     domain,
-				Normalized: normalizeDomain(domain),
-				ParsedIP:   parsedIP,
-				IPPriority: getIPPriority(parsedIP, ipStr),
+			duplicated := false
+			for _, entry := range entries {
+				if entry.IP == ipStr && strings.ToLower(entry.Domain) == strings.ToLower(domain) {
+					duplicated = true
+					break
+				}
 			}
-			entries = append(entries, newEntry)
+
+			if duplicated {
+				skippedEntries = append(skippedEntries, HostEntry{IP: ipStr, Domain: domain})
+				fmt.Println(ui.WarningMessage(fmt.Sprintf("Host already exists (skipped): %s -> %s", ipStr, domain)))
+			} else {
+				newEntry := HostEntry{
+					IP:         ipStr,
+					Domain:     domain,
+					Normalized: normalizeDomain(domain),
+					ParsedIP:   parsedIP,
+					IPPriority: priority,
+				}
+				addedEntries = append(addedEntries, newEntry)
+				entries = append(entries, newEntry)
+			}
 		}
 	}
 
-	if len(addedDomains) > 0 {
+	if len(addedEntries) > 0 {
 		var sb strings.Builder
 		sb.WriteString(ui.BoldStyle.Render("Preparing to add new host entries:") + "\n")
 		header := ui.BoldStyle.Render(fmt.Sprintf("%-16s   %s", "IP", "DOMAIN"))
 		sb.WriteString("  " + header + "\n")
 		sb.WriteString("  " + ui.GrayStyle().Render(strings.Repeat("-", 50)) + "\n")
-		for i, dom := range addedDomains {
-			if i == 0 {
-				sb.WriteString(fmt.Sprintf("  %-16s   %s\n", ipStr, dom))
+		var prevIP string
+		for _, entry := range addedEntries {
+			if entry.IP != prevIP {
+				sb.WriteString(fmt.Sprintf("  %-16s   %s\n", entry.IP, entry.Domain))
 			} else {
-				sb.WriteString(fmt.Sprintf("  %-16s   %s\n", "", dom))
+				sb.WriteString(fmt.Sprintf("  %-16s   %s\n", "", entry.Domain))
 			}
+			prevIP = entry.IP
 		}
 		sb.WriteString("\n" + ui.InfoMessage(privilegeMessage()))
 
@@ -533,8 +636,26 @@ func addEntry(headerComments []string, entries []HostEntry) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(ui.SuccessMessage(fmt.Sprintf("Successfully added domains to %s: %s", ipStr, strings.Join(addedDomains, ", "))))
-	} else if len(skippedDomains) > 0 {
+
+		ipMap := make(map[string][]string)
+		var uniqueIPs []string
+		for _, entry := range addedEntries {
+			if _, exists := ipMap[entry.IP]; !exists {
+				uniqueIPs = append(uniqueIPs, entry.IP)
+			}
+			ipMap[entry.IP] = append(ipMap[entry.IP], entry.Domain)
+		}
+
+		if len(uniqueIPs) == 1 {
+			ip := uniqueIPs[0]
+			fmt.Println(ui.SuccessMessage(fmt.Sprintf("Successfully added domains to %s: %s", ip, strings.Join(ipMap[ip], ", "))))
+		} else {
+			fmt.Println(ui.SuccessMessage(fmt.Sprintf("Successfully added %d host entries across %d IPs:", len(addedEntries), len(uniqueIPs))))
+			for _, ip := range uniqueIPs {
+				fmt.Printf("  %s -> %s\n", ui.BoldStyle.Render(ip), strings.Join(ipMap[ip], ", "))
+			}
+		}
+	} else if len(skippedEntries) > 0 {
 		fmt.Println(ui.InfoMessage("No new entries were added (all input domains were duplicates)."))
 	}
 
