@@ -59,7 +59,7 @@ func Input(placeholder, defaultValue string) (string, error) {
 		ti.SetValue(defaultValue)
 	}
 	ti.Focus()
-	ti.CharLimit = 156
+	ti.CharLimit = 0
 	ti.Width = 60
 
 	m := inputModel{textInput: ti}
