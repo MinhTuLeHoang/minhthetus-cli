@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.2] - 2026-11-25
+
+### Added
+- Add unit tests for rename-branch name formatting and project LICENSE file
+
+### Changed
+- Automatically convert spaces to hyphens in git rename-branch input
+- Update Git-Rename-Branch wiki documentation
+
 ## [1.12.1] - 2026-11-23
 
 ### Added
