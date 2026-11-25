@@ -18,6 +18,7 @@ minhthetus-cli git rename-branch
     *   Checks for any uncommitted changes. If any exist, prompts the user to commit or stash them and aborts.
 3.  **New Branch Input**:
     *   Prompts the user to enter the new name for the branch.
+    *   Trims surrounding whitespace and automatically converts spaces to hyphens (`-`) *(supported from `v1.12.2`)*.
     *   Validates that the target name is not empty, does not match the current name, and does not already exist locally or on the remote origin.
 4.  **Rename Execution**:
     *   Renames the local branch to the new name.
@@ -27,7 +28,8 @@ minhthetus-cli git rename-branch
 
 ## Version History
 * **First Stable Version Supported**: `v1.7.0`
-* **Latest Stable Version Update**: `v1.8.0`
+* **Latest Stable Version Update**: `v1.12.2`
 
+- **v1.12.2**: Automatically trim outer whitespace and convert spaces to hyphens in new branch names.
 - **v1.8.0**: Improve branch protection rules, add support for multiple Git providers
 - **v1.7.0**: Introduced the rename command.
