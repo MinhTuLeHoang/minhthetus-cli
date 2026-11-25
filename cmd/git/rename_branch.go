@@ -3,12 +3,20 @@ package git
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/MinhTuLeHoang/minhthetus-cli/internal/git"
 	"github.com/MinhTuLeHoang/minhthetus-cli/internal/ui"
 	"github.com/spf13/cobra"
 )
+
+var whitespaceRegex = regexp.MustCompile(`\s+`)
+
+// formatBranchName trims surrounding whitespace and converts internal whitespace runs to hyphens.
+func formatBranchName(name string) string {
+	return whitespaceRegex.ReplaceAllString(strings.TrimSpace(name), "-")
+}
 
 var RenameBranchCmd = &cobra.Command{
 	Use:   "rename-branch",
@@ -54,7 +62,7 @@ var RenameBranchCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		newBranch = strings.TrimSpace(newBranch)
+		newBranch = formatBranchName(newBranch)
 		if newBranch == "" {
 			fmt.Printf("%s %s\n", ui.ErrorMessage(""), "New branch name cannot be empty.")
 			os.Exit(1)
